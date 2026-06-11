@@ -1,0 +1,2725 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeptoSearch v6</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f0f;--bg2:#1a1a1a;--bg3:#222;
+  --border:#2e2e2e;--border2:#3a3a3a;
+  --text:#e8e8e8;--text2:#aaa;--text3:#666;
+  --accent:#534AB7;--accent-light:#EEEDFE;--accent-dark:#3C3489;
+  --green-bg:#0d2018;--green:#1D9E75;--green-text:#4ade9e;
+  --red-bg:#2a0a0a;--red:#A32D2D;--red-text:#f87171;
+  --yellow-bg:#1f1500;--yellow-text:#f59e0b;
+  --radius:8px;--radius-lg:12px;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+.app{display:flex;height:100vh}
+.sidebar{width:220px;min-width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:1rem 0}
+.logo{padding:0 1.1rem 1rem;border-bottom:1px solid var(--border);margin-bottom:.5rem}
+.logo h1{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;color:var(--text)}
+.logo h1 i{color:var(--accent);font-size:18px}
+.logo p{font-size:11px;color:var(--text3);margin-top:3px}
+.nav-sec{font-size:10px;font-weight:600;color:var(--text3);padding:.85rem 1.1rem .3rem;text-transform:uppercase;letter-spacing:.08em}
+.nav-btn{display:flex;align-items:center;gap:9px;padding:8px 1.1rem;font-size:13px;cursor:pointer;color:var(--text2);background:none;border:none;width:100%;text-align:left;font-family:inherit;border-radius:0;transition:background .1s}
+.nav-btn i{font-size:17px}
+.nav-btn:hover{background:var(--bg3);color:var(--text)}
+.nav-btn.active{background:var(--bg3);color:var(--text);font-weight:500;border-right:2px solid var(--accent)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.main-scroll{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-height:0}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:.85rem 1.4rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.topbar h2{font-size:15px;font-weight:500}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;cursor:pointer;background:var(--bg2);color:var(--text);font-family:inherit;transition:background .1s}
+.btn:hover{background:var(--bg3)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:var(--accent-dark)}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-danger{background:var(--red-bg);color:var(--red-text);border-color:var(--red)}
+.content{padding:1.4rem;flex:1}
+.screen{display:none}
+.screen.active{display:block}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.4rem}
+.stat{background:var(--bg2);border-radius:var(--radius);padding:1rem;border:1px solid var(--border)}
+.stat .lbl{font-size:11px;color:var(--text2);margin-bottom:4px}
+.stat .val{font-size:22px;font-weight:600}
+.stat .sub{font-size:11px;color:var(--text3);margin-top:2px}
+
+/* Cards */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}
+.dcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;transition:border-color .15s}
+.dcard:hover{border-color:var(--border2)}
+.dcard-img{height:130px;background:var(--bg3);overflow:hidden}
+.dcard-img img{width:100%;height:100%;object-fit:cover}
+.dcard-img .no-img{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);flex-direction:column;gap:6px;font-size:12px}
+.dcard-img .no-img i{font-size:30px}
+.dcard-body{padding:.85rem 1rem}
+.dcard-title{font-size:14px;font-weight:500;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dcard-addr{font-size:12px;color:var(--text2);margin-bottom:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.price-row{display:flex;align-items:baseline;gap:9px;margin-bottom:7px}
+.price{font-size:16px;font-weight:600;color:var(--accent)}
+.ppm2{font-size:11px;color:var(--text2);background:var(--bg3);padding:2px 7px;border-radius:5px}
+.meta-chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
+.chip{font-size:11px;color:var(--text2);background:var(--bg3);padding:3px 8px;border-radius:5px;display:flex;align-items:center;gap:3px}
+.chip i{font-size:13px}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:3px 8px;border-radius:5px;font-weight:500}
+.st-interesado{background:#1e1a3f;color:#a5a0ff}
+.st-visita{background:var(--green-bg);color:var(--green-text)}
+.st-visitado{background:#0a1f2e;color:#38bdf8}
+.st-favorito{background:#1f1500;color:var(--yellow-text)}
+.st-descartado{background:var(--red-bg);color:var(--red-text)}
+.dcard-foot{padding:.6rem 1rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.stars{display:flex;gap:1px}
+.star{font-size:14px;cursor:pointer;color:var(--border2)}
+.star.on{color:#EF9F27}
+.ibt{border:none;background:none;cursor:pointer;color:var(--text2);font-size:16px;padding:4px;border-radius:6px;font-family:inherit;transition:background .1s}
+.ibt:hover{background:var(--bg3);color:var(--text)}
+
+/* Modal */
+.modal-wrap{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.modal-wrap.open{display:flex}
+.modal-wrap[aria-hidden="true"]{display:none}
+.modal{background:var(--bg2);border-radius:var(--radius-lg);border:1px solid var(--border);width:100%;max-width:580px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column}
+.modal-head{padding:1.1rem 1.4rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--bg2);z-index:2}
+.modal-head h3{font-size:15px;font-weight:500}
+.modal-body{padding:1.4rem;flex:1}
+.modal-foot{padding:1rem 1.4rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:var(--bg2)}
+
+/* Form */
+.frow{margin-bottom:.9rem}
+.frow label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+.frow input,.frow select,.frow textarea{width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;background:var(--bg3);color:var(--text);font-family:inherit}
+.frow input:focus,.frow select:focus,.frow textarea:focus{outline:none;border-color:var(--accent)}
+.frow textarea{resize:vertical;min-height:65px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+/* Import box */
+.import-box{border:1px dashed var(--border2);border-radius:var(--radius-lg);padding:1.1rem;margin-bottom:1rem;background:var(--bg3)}
+.import-box .import-label{font-size:12px;color:var(--text2);display:block;margin-bottom:.6rem;font-weight:500}
+.import-tabs{display:flex;gap:6px;margin-bottom:.75rem}
+.itab{padding:5px 13px;border:1px solid var(--border2);border-radius:20px;font-size:12px;cursor:pointer;background:var(--bg2);color:var(--text2);font-family:inherit;transition:all .1s}
+.itab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.import-panel{display:none}
+.import-panel.active{display:block}
+.import-row{display:flex;gap:8px}
+.import-row input{flex:1;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;background:var(--bg2);color:var(--text);font-family:inherit}
+.import-row input:focus{outline:none;border-color:var(--accent)}
+.import-status{font-size:12px;margin-top:8px;min-height:18px;display:flex;align-items:center;gap:6px}
+.upload-area{border:1px dashed var(--border2);border-radius:var(--radius);padding:1.5rem;text-align:center;cursor:pointer;background:var(--bg2);transition:border-color .15s}
+.upload-area:hover{border-color:var(--accent)}
+.upload-area i{font-size:28px;color:var(--text3);display:block;margin-bottom:8px}
+.upload-area p{font-size:13px;color:var(--text2)}
+.upload-area small{font-size:11px;color:var(--text3);display:block;margin-top:3px}
+.preview-img{max-width:100%;max-height:160px;border-radius:var(--radius);margin-top:10px;border:1px solid var(--border)}
+.divider{font-size:11px;color:var(--text3);text-align:center;margin:.75rem 0;display:flex;align-items:center;gap:10px}
+.divider::before,.divider::after{content:'';flex:1;border-top:1px solid var(--border)}
+
+/* Visit list */
+.visit-list{display:flex;flex-direction:column;gap:8px}
+.vi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:.8rem 1rem;display:flex;justify-content:space-between;align-items:flex-start}
+.vi-name{font-size:13px;font-weight:500;margin-bottom:2px}
+.vi-addr{font-size:11px;color:var(--text2)}
+.vi-dt{font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px;margin-top:3px}
+
+/* Calendar */
+.cal-head-row{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px}
+.cal-h{font-size:10px;color:var(--text3);text-align:center;padding:3px 0;font-weight:600}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:.5rem}
+.cal-toolbar strong{font-size:12px;font-weight:500;color:var(--text2);text-transform:capitalize}
+.cd{min-height:58px;border:1px solid var(--border);border-radius:6px;padding:4px;background:var(--bg2);font-size:10px}
+.cd.today{border-color:var(--accent);background:#1a1830}
+.cd .dn{font-weight:600;color:var(--text2);font-size:11px;margin-bottom:2px}
+.cd.today .dn{color:var(--accent)}
+.cd.empty{border-color:transparent;background:transparent}
+.cev{background:var(--accent);color:#fff;border-radius:4px;padding:1px 4px;font-size:9px;margin-bottom:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer}
+
+/* Compare */
+.cmp-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.cmp-table th{text-align:left;padding:8px 12px;background:var(--bg3);font-weight:500;font-size:12px;color:var(--text2)}
+.cmp-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.cmp-table tr:last-child td{border-bottom:none}
+.cmp-table td:first-child{color:var(--text2);font-size:12px;width:120px}
+
+/* Detail modal */
+.det-gallery{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:1.1rem}
+.det-gallery img{height:110px;min-width:155px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border)}
+.det-section{margin-bottom:1.25rem}
+.det-section h4{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.6rem}
+.kv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kv{background:var(--bg3);border-radius:var(--radius);padding:.7rem .85rem}
+.kv .k{font-size:10px;color:var(--text3);margin-bottom:3px}
+.kv .v{font-size:13px;font-weight:500}
+.kv .v.accent{color:var(--accent)}
+.pros-cons{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pc{border-radius:var(--radius);padding:.75rem}
+.pc h5{font-size:12px;font-weight:600;margin-bottom:.4rem}
+.pc p{font-size:12px;line-height:1.6}
+.pros{background:#0d2010;color:#4ade80}
+.cons{background:var(--red-bg);color:var(--red-text)}
+.tag-list{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:11px;padding:3px 9px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);color:var(--text2)}
+
+/* Source pills */
+.src-pill{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 8px;border-radius:5px;font-weight:600}
+.src-argenprop{background:#0c2a4a;color:#60a5fa}
+.src-zonaprop{background:var(--green-bg);color:var(--green-text)}
+.src-mercadolibre{background:#1f1500;color:var(--yellow-text)}
+.src-manual{background:#1e1a3f;color:#a5a0ff}
+.src-captura{background:#1a1a1a;color:#9ca3af}
+.src-url{background:var(--green-bg);color:var(--green-text)}
+
+/* Filter */
+.filter-row{display:flex;gap:7px;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
+.fc{padding:5px 13px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:var(--bg2);color:var(--text2);font-family:inherit}
+.fc.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.sort-sel{padding:5px 9px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--bg2);color:var(--text2);font-family:inherit;margin-left:auto}
+
+/* Misc */
+.empty{text-align:center;padding:3rem 1rem;color:var(--text2);grid-column:1/-1}
+.empty i{font-size:36px;display:block;margin-bottom:.75rem;opacity:.3}
+.empty p{font-size:13px}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.compat-bar{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:4px}
+.compat-fill{height:100%;background:var(--accent);border-radius:3px}
+.groq-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:5px;background:#0d2a1a;color:#4ade80;font-weight:600}
+
+/* Ajustes */
+.settings-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;max-width:480px}
+.settings-card h3{font-size:13px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ── v5 NEW STYLES ── */
+
+/* Price range filter */
+.filter-range-group{display:flex;align-items:center;gap:6px;margin-left:auto}
+.filter-range-group label{font-size:11px;color:var(--text3);white-space:nowrap}
+.filter-range-group input[type=number]{width:80px;padding:4px 7px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--bg2);color:var(--text);font-family:inherit}
+.filter-range-group input[type=number]:focus{outline:none;border-color:var(--accent)}
+
+/* Days tracking badge */
+.days-badge{font-size:10px;color:var(--text3);display:flex;align-items:center;gap:3px;margin-bottom:4px}
+.days-badge.fresh{color:var(--green-text)}
+.days-badge.old{color:var(--yellow-text)}
+.days-badge.very-old{color:var(--red-text)}
+
+/* Price history */
+.price-hist{font-size:10px;display:flex;align-items:center;gap:4px;margin-top:2px}
+.price-hist.down{color:var(--green-text)}
+.price-hist.up{color:var(--red-text)}
+
+/* Activity log */
+.activity-log{display:flex;flex-direction:column;gap:6px;margin-top:.5rem}
+.act-item{display:flex;gap:8px;align-items:flex-start}
+.act-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:4px}
+.act-text{font-size:12px;color:var(--text2);line-height:1.5}
+.act-date{font-size:10px;color:var(--text3)}
+.act-input-row{display:flex;gap:7px;margin-top:.6rem}
+.act-input-row input{flex:1;padding:6px 9px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;background:var(--bg3);color:var(--text);font-family:inherit}
+.act-input-row input:focus{outline:none;border-color:var(--accent)}
+
+/* Chart panel */
+.chart-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;margin-bottom:1.4rem}
+.chart-panel h4{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.85rem}
+
+/* Negotiation status */
+.st-negociacion{background:#1a1200;color:#fbbf24}
+
+/* Light theme */
+body.light-mode{--bg:#f5f5f5;--bg2:#fff;--bg3:#f0f0f0;--border:#ddd;--border2:#ccc;--text:#111;--text2:#555;--text3:#999;--green-bg:#d1fae5;--green-text:#065f46;--red-bg:#fee2e2;--red-text:#991b1b;--yellow-bg:#fef3c7;--yellow-text:#92400e}
+body.light-mode .leaflet-popup-content-wrapper{background:#fff!important;border-color:#ddd!important;color:#111!important}
+body.light-mode .leaflet-popup-tip{background:#fff!important}
+
+/* Theme toggle */
+.theme-toggle{background:none;border:1px solid var(--border2);border-radius:var(--radius);padding:5px 10px;font-size:12px;cursor:pointer;color:var(--text2);font-family:inherit;display:flex;align-items:center;gap:5px;transition:background .1s}
+.theme-toggle:hover{background:var(--bg3)}
+
+/* Visit reminder banner */
+.visit-banner{background:linear-gradient(90deg,var(--green-bg),transparent);border:1px solid var(--green);border-radius:var(--radius);padding:.65rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:8px;cursor:pointer}
+.visit-banner i{color:var(--green-text);font-size:16px;flex-shrink:0}
+.visit-banner .vb-text{font-size:13px;color:var(--green-text);font-weight:500}
+.visit-banner .vb-sub{font-size:11px;color:var(--text2)}
+
+/* AI analyze depto button */
+.btn-ai-depto{display:flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;cursor:pointer;background:var(--bg3);color:var(--text2);font-family:inherit;margin-top:.5rem;width:100%;justify-content:center;transition:background .1s}
+.btn-ai-depto:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ai-result-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:.85rem 1rem;font-size:13px;line-height:1.7;color:var(--text);margin-top:.6rem;min-height:40px}
+
+/* Share export panel */
+.share-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:.75rem;margin-top:.6rem;font-size:12px;color:var(--text2);word-break:break-all}
+
+/* Drag handle */
+.drag-handle{cursor:grab;color:var(--text3);font-size:16px;padding:4px;flex-shrink:0}
+.drag-handle:active{cursor:grabbing}
+.dcard{transition:border-color .15s, box-shadow .15s}
+.dcard.sortable-ghost{opacity:.4;box-shadow:0 0 0 2px var(--accent)}
+.dcard.sortable-drag{box-shadow:0 8px 24px rgba(0,0,0,.4)}
+
+/* Map screen */
+#screen-mapa{display:none;flex:1;overflow:hidden}
+#screen-mapa.active{display:flex}
+.map-sidebar{width:310px;min-width:310px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.map-sidebar-head{padding:.75rem 1rem .5rem;border-bottom:1px solid var(--border);flex-shrink:0}
+.map-sidebar-head h3{font-size:13px;font-weight:500;color:var(--text2);margin-bottom:.55rem}
+.map-filter-pills{display:flex;gap:5px;flex-wrap:wrap}
+.mfp{padding:3px 10px;border:1px solid var(--border);border-radius:20px;font-size:11px;cursor:pointer;background:var(--bg3);color:var(--text2);font-family:inherit;transition:all .1s}
+.mfp.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* Sidebar tabs */
+.map-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.map-tab{flex:1;padding:.55rem 0;font-size:12px;font-family:inherit;background:none;border:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px}
+.map-tab.on{color:var(--text);border-bottom-color:var(--accent)}
+.map-tab-panel{display:none;flex:1;overflow-y:auto}
+.map-tab-panel.on{display:flex;flex-direction:column}
+
+/* Deptos list */
+.map-list{padding:.5rem}
+.map-list-item{padding:.65rem .8rem;border-radius:var(--radius);cursor:pointer;border:1px solid transparent;transition:all .15s;margin-bottom:4px}
+.map-list-item:hover{background:var(--bg3);border-color:var(--border)}
+.map-list-item.active{background:#1e1a3f;border-color:var(--accent)}
+.mli-name{font-size:13px;font-weight:500;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mli-addr{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.mli-row{display:flex;align-items:center;gap:6px}
+.mli-price{font-size:12px;font-weight:600;color:var(--accent)}
+.mli-no-geo{font-size:10px;color:var(--text3);display:flex;align-items:center;gap:3px;margin-top:3px}
+
+/* POI panel */
+.poi-panel{padding:.6rem .75rem;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:0}
+.poi-item{display:flex;align-items:center;gap:8px;padding:.5rem .4rem;border-bottom:1px solid var(--border);font-size:13px}
+.poi-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,.25)}
+.poi-name{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.poi-type{font-size:10px;color:var(--text3);flex-shrink:0}
+.poi-actions{display:flex;gap:2px;flex-shrink:0}
+.poi-add-form{padding:.65rem .75rem;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0}
+.poi-add-form .poi-row{display:flex;gap:6px;margin-bottom:6px}
+.poi-add-form input,.poi-add-form select{flex:1;padding:6px 8px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;background:var(--bg3);color:var(--text);font-family:inherit}
+.poi-add-form input:focus,.poi-add-form select:focus{outline:none;border-color:var(--accent)}
+.poi-add-form .poi-hint{font-size:10px;color:var(--text3);margin-bottom:5px}
+
+/* Zones panel */
+.zones-panel{padding:.6rem .75rem;flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.zone-item{display:flex;align-items:center;gap:8px;padding:.45rem .4rem;border-bottom:1px solid var(--border);font-size:13px}
+.zone-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.zone-name{flex:1;font-size:13px}
+.zone-hint{font-size:11px;color:var(--text3);margin:6px 0 8px;line-height:1.5}
+.zones-add-form{padding:.65rem .75rem;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0}
+.zones-add-form .poi-row{display:flex;gap:6px;margin-bottom:6px}
+.zones-add-form input{flex:1;padding:6px 8px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;background:var(--bg3);color:var(--text);font-family:inherit}
+.zones-add-form input:focus{outline:none;border-color:var(--accent)}
+
+/* Map container */
+#map-container{flex:1;position:relative;z-index:0}
+.map-geo-status{position:absolute;bottom:10px;right:10px;z-index:999;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:5px 10px;font-size:11px;color:var(--text2);display:none;align-items:center;gap:6px}
+.map-geo-status.show{display:flex}
+
+/* Map toolbar (layer toggles) */
+.map-toolbar{position:absolute;top:10px;right:10px;z-index:999;display:flex;flex-direction:column;gap:5px}
+.map-tool-btn{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;font-size:11px;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap}
+.map-tool-btn.on{background:#1e1a3f;color:#a5a0ff;border-color:var(--accent)}
+.map-tool-btn:hover{background:var(--bg3)}
+
+/* Leaflet popup overrides — fix border-radius clipping */
+.leaflet-popup-content-wrapper{
+  background:#1a1a1a!important;
+  border:1px solid #333!important;
+  border-radius:14px!important;
+  box-shadow:0 8px 32px rgba(0,0,0,.7)!important;
+  color:#e8e8e8!important;
+  padding:0!important;
+  overflow:hidden!important;  /* must be on wrapper, not inner div */
+}
+.leaflet-popup-tip-container{margin-top:-1px}
+.leaflet-popup-tip{background:#1a1a1a!important;box-shadow:none!important}
+.leaflet-popup-close-button{color:#666!important;font-size:18px!important;right:8px!important;top:6px!important;z-index:10}
+.leaflet-popup-close-button:hover{color:#e8e8e8!important}
+.leaflet-popup-content{margin:0!important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.4}
+
+/* Depto popup */
+.map-popup{width:230px}
+.map-popup-img{width:100%;height:115px;object-fit:cover;display:block}
+.map-popup-img-placeholder{width:100%;height:50px;background:#1e1e1e;display:flex;align-items:center;justify-content:center;color:#444}
+.map-popup-body{padding:11px 13px 13px}
+.map-popup-name{font-size:13px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:8px}
+.map-popup-addr{font-size:11px;color:#777;margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.map-popup-price{font-size:15px;font-weight:700;color:#7b74e8;margin-bottom:9px}
+.map-popup-actions{display:flex;gap:6px}
+.map-popup-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 0;background:#534AB7;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500;transition:background .12s}
+.map-popup-btn:hover{background:#3C3489}
+.map-popup-btn-sec{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 0;background:#222;color:#aaa;border:1px solid #333;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .12s}
+.map-popup-btn-sec:hover{background:#2a2a2a;color:#e8e8e8}
+
+/* POI popup */
+.poi-popup{width:260px;padding:0}
+.poi-popup-header{padding:12px 14px 10px;border-bottom:1px solid #2a2a2a}
+.poi-popup-type{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px}
+.poi-popup-name{font-size:15px;font-weight:600}
+.poi-popup-addr{font-size:11px;color:#666;margin-top:3px}
+.poi-popup-travel{padding:10px 14px 4px}
+.poi-popup-travel-title{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px;display:flex;align-items:center;gap:5px}
+.poi-popup-route{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #222;cursor:pointer;transition:background .1s;gap:6px}
+.poi-popup-route:last-child{border-bottom:none}
+.poi-popup-route:hover .poi-route-name{color:#e8e8e8}
+.poi-route-name{font-size:12px;color:#aaa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;transition:color .1s}
+.poi-route-time{font-size:11px;white-space:nowrap;font-weight:500}
+.poi-popup-links{padding:10px 14px 12px;display:flex;gap:6px;border-top:1px solid #2a2a2a}
+.poi-transport-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 4px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:none;text-decoration:none;transition:opacity .1s}
+.poi-transport-btn:hover{opacity:.85}
+.poi-popup-del{width:100%;margin:0 14px 12px;width:calc(100% - 28px);padding:6px;background:#2a0a0a;color:#f87171;border:1px solid #A32D2D;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px}
+
+@media(max-width:900px){.map-sidebar{width:260px;min-width:260px}}
+@media(max-width:640px){
+  #screen-mapa.active{flex-direction:column}
+  .map-sidebar{width:100%;min-width:0;height:220px;border-right:none;border-bottom:1px solid var(--border)}
+  .map-list{display:flex;flex-direction:row;gap:6px;overflow-x:auto;overflow-y:hidden;padding:.5rem}
+  .map-list-item{min-width:180px;flex-shrink:0}
+}
+
+/* ── Hamburger button (mobile only) ── */
+.menu-toggle{display:none;background:none;border:none;color:var(--text);cursor:pointer;font-size:22px;padding:4px;margin-right:8px;line-height:1}
+
+/* ── Sidebar overlay ── */
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99}
+.sidebar-overlay.open{display:block}
+
+/* ── Responsive breakpoints ── */
+
+/* Tablet (≤900px): collapse sidebar */
+@media(max-width:900px){
+  .sidebar{
+    position:fixed;left:0;top:0;bottom:0;z-index:100;
+    transform:translateX(-100%);transition:transform .22s ease;
+    width:220px;
+  }
+  .sidebar.open{transform:translateX(0)}
+  .menu-toggle{display:flex;align-items:center;justify-content:center}
+  .stats-row{grid-template-columns:repeat(2,1fr)}
+  #screen-resumen>div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}
+  #screen-visitas>div[style*="grid-template-columns"]{grid-template-columns:1fr!important}
+  #screen-criterios>div[style*="grid-template-columns"]{grid-template-columns:1fr!important}
+}
+
+/* Small tablet / large phone (≤640px) */
+@media(max-width:640px){
+  .content{padding:1rem .85rem}
+  .topbar{padding:.75rem 1rem}
+  .stats-row{grid-template-columns:repeat(2,1fr);gap:8px}
+  .fgrid{grid-template-columns:1fr}
+  .fgrid3{grid-template-columns:1fr 1fr}
+  .kv-grid{grid-template-columns:repeat(2,1fr)}
+  .pros-cons{grid-template-columns:1fr}
+  .modal{max-width:100%;border-radius:var(--radius-lg) var(--radius-lg) 0 0}
+  .modal-wrap{align-items:flex-end;padding:0}
+  .filter-row{gap:5px}
+  .fc{padding:4px 10px;font-size:11px}
+}
+
+/* Phone (≤420px) */
+@media(max-width:420px){
+  .stats-row{grid-template-columns:1fr 1fr}
+  .stat .val{font-size:18px}
+  .topbar h2{font-size:14px}
+  .btn{padding:6px 11px;font-size:12px}
+  .btn i{font-size:14px}
+  .cards-grid{grid-template-columns:1fr}
+  .fgrid3{grid-template-columns:1fr}
+  .import-tabs{flex-wrap:wrap}
+  .sort-sel{font-size:11px}
+  #search-q{width:100px!important}
+}
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<div class="app">
+<div class="sidebar" id="sidebar">
+  <div class="logo">
+    <h1><i class="ti ti-building"></i>DeptoSearch</h1>
+    <p>Buscador de departamentos <span style="color:var(--accent);font-weight:600">v6</span></p>
+    <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()" style="margin-top:.6rem"><i class="ti ti-moon"></i> Modo claro</button>
+  </div>
+  <span class="nav-sec">Principal</span>
+  <button class="nav-btn active" onclick="nav('resumen')"><i class="ti ti-layout-dashboard"></i>Resumen</button>
+  <button class="nav-btn" onclick="nav('deptos')"><i class="ti ti-building-estate"></i>Departamentos</button>
+  <button class="nav-btn" onclick="nav('mapa')"><i class="ti ti-map-2"></i>Mapa</button>
+  <button class="nav-btn" onclick="nav('visitas')"><i class="ti ti-calendar-event"></i>Visitas</button>
+  <button class="nav-btn" onclick="nav('comparar')"><i class="ti ti-scale"></i>Comparar</button>
+  <span class="nav-sec">Configuración</span>
+  <button class="nav-btn" onclick="nav('criterios')"><i class="ti ti-checklist"></i>Mis criterios</button>
+  <button class="nav-btn" onclick="nav('ajustes')"><i class="ti ti-settings"></i>Ajustes</button>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Menú"><i class="ti ti-menu-2"></i></button>
+    <h2 id="page-title">Resumen</h2>
+    <div id="topbar-btns">
+      <button class="btn btn-primary" onclick="openAddModal()"><i class="ti ti-plus"></i>Agregar depto</button>
+    </div>
+  </div>
+  <div class="screen" id="screen-mapa">
+      <div class="map-sidebar">
+        <div class="map-sidebar-head">
+          <h3><i class="ti ti-map-2" style="font-size:14px;margin-right:4px"></i>Mapa interactivo</h3>
+          <div class="map-filter-pills" id="map-filter-pills">
+            <button class="mfp on" onclick="setMapFilter(this,'todos')">Todos</button>
+            <button class="mfp" onclick="setMapFilter(this,'interesado')">Interesados</button>
+            <button class="mfp" onclick="setMapFilter(this,'visita')">Con visita</button>
+            <button class="mfp" onclick="setMapFilter(this,'visitado')">Visitados</button>
+            <button class="mfp" onclick="setMapFilter(this,'favorito')">Favoritos</button>
+            <button class="mfp" onclick="setMapFilter(this,'negociacion')">Negociando</button>
+            <button class="mfp" onclick="setMapFilter(this,'descartado')">Descartados</button>
+          </div>
+        </div>
+        <div class="map-tabs">
+          <button class="map-tab on" onclick="switchMapTab(this,'tab-deptos')"><i class="ti ti-building-estate" style="font-size:14px"></i> Deptos</button>
+          <button class="map-tab" onclick="switchMapTab(this,'tab-pois')"><i class="ti ti-star" style="font-size:14px"></i> Lugares</button>
+          <button class="map-tab" onclick="switchMapTab(this,'tab-zones')"><i class="ti ti-map" style="font-size:14px"></i> Zonas</button>
+        </div>
+
+        <!-- Tab: Deptos -->
+        <div class="map-tab-panel on" id="tab-deptos">
+          <div style="padding:.5rem .5rem .25rem;flex-shrink:0">
+            <input type="text" id="map-search" placeholder="🔍  Buscar depto..." oninput="renderMapList()" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:20px;font-size:12px;background:var(--bg3);color:var(--text);font-family:inherit;outline:none">
+          </div>
+          <div class="map-list" id="map-list"></div>
+        </div>
+
+        <!-- Tab: POIs -->
+        <div class="map-tab-panel" id="tab-pois">
+          <div class="poi-panel" id="poi-list"></div>
+          <div class="poi-add-form">
+            <div class="poi-hint"><i class="ti ti-info-circle" style="font-size:11px"></i> Marcá tu trabajo, gimnasio, casa de familia, etc. Al hacer clic en el pin verás opciones de transporte.</div>
+            <div class="poi-row">
+              <input type="text" id="poi-name-input" placeholder="Nombre (ej: Mi trabajo)" style="flex:2">
+              <select id="poi-type-input">
+                <option value="trabajo">💼 Trabajo</option>
+                <option value="casa">🏠 Casa actual</option>
+                <option value="gym">🏋️ Gimnasio</option>
+                <option value="familia">👨‍👩‍👧 Familia</option>
+                <option value="otro">📍 Otro</option>
+              </select>
+            </div>
+            <div class="poi-row">
+              <input type="text" id="poi-addr-input" placeholder="Dirección o hacer clic en el mapa">
+              <button class="btn btn-primary btn-sm" onclick="startPoiClick()" id="poi-click-btn" title="Hacer clic en el mapa"><i class="ti ti-map-pin"></i></button>
+            </div>
+            <button class="btn btn-primary" style="width:100%;font-size:12px" onclick="addPoiFromForm()"><i class="ti ti-plus"></i> Agregar lugar</button>
+          </div>
+        </div>
+
+        <!-- Tab: Zonas -->
+        <div class="map-tab-panel" id="tab-zones">
+          <div class="zones-panel">
+            <div class="zone-hint"><i class="ti ti-info-circle" style="font-size:11px"></i> Marcá zonas que te gustan en el mapa. El mapa de calor mostrará qué deptos están más cerca de esas zonas.</div>
+            <div id="zone-list"></div>
+          </div>
+          <div class="zones-add-form">
+            <div class="poi-row">
+              <input type="text" id="zone-name-input" placeholder="Nombre de zona (ej: Palermo)">
+            </div>
+            <div style="display:flex;gap:6px;margin-bottom:6px">
+              <button class="btn btn-primary btn-sm" style="flex:1;font-size:12px" onclick="startZoneClick()" id="zone-click-btn"><i class="ti ti-map-pin-plus"></i> Clic en mapa</button>
+              <button class="btn btn-sm" style="flex:1;font-size:12px" onclick="addZoneFromAddr()"><i class="ti ti-search"></i> Por dirección</button>
+            </div>
+            <input type="text" id="zone-addr-input" placeholder="Dirección de la zona..." style="width:100%;padding:6px 8px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;background:var(--bg3);color:var(--text);font-family:inherit;margin-bottom:6px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <label style="font-size:11px;color:var(--text3)">Radio:</label>
+              <input type="range" id="zone-radius-input" min="200" max="2000" value="500" step="100" style="flex:1">
+              <span id="zone-radius-val" style="font-size:11px;color:var(--text2);min-width:42px">500m</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <label style="font-size:11px;color:var(--text3)">Color:</label>
+              <div style="display:flex;gap:5px" id="zone-color-picker">
+                <div class="zone-color-opt" data-color="#534AB7" style="width:18px;height:18px;border-radius:50%;background:#534AB7;cursor:pointer;border:2px solid white"></div>
+                <div class="zone-color-opt" data-color="#1D9E75" style="width:18px;height:18px;border-radius:50%;background:#1D9E75;cursor:pointer;border:2px solid transparent"></div>
+                <div class="zone-color-opt" data-color="#EF9F27" style="width:18px;height:18px;border-radius:50%;background:#EF9F27;cursor:pointer;border:2px solid transparent"></div>
+                <div class="zone-color-opt" data-color="#e05d5d" style="width:18px;height:18px;border-radius:50%;background:#e05d5d;cursor:pointer;border:2px solid transparent"></div>
+                <div class="zone-color-opt" data-color="#38bdf8" style="width:18px;height:18px;border-radius:50%;background:#38bdf8;cursor:pointer;border:2px solid transparent"></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-primary" style="flex:1;font-size:12px" onclick="toggleHeatmap()" id="heatmap-toggle-btn"><i class="ti ti-flame"></i> Mapa de calor: OFF</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="map-container">
+        <div class="map-toolbar" id="map-toolbar" style="display:none">
+          <button class="map-tool-btn on" id="layer-deptos-btn" onclick="toggleLayer('deptos')"><i class="ti ti-building-estate" style="font-size:13px"></i> Deptos</button>
+          <button class="map-tool-btn on" id="layer-pois-btn" onclick="toggleLayer('pois')"><i class="ti ti-star" style="font-size:13px"></i> Lugares</button>
+          <button class="map-tool-btn" onclick="fitMapBounds()" title="Centrar en todos los deptos"><i class="ti ti-focus-2" style="font-size:13px"></i> Centrar</button>
+        </div>
+        <div class="map-geo-status" id="map-geo-status"><span class="spin"></span><span id="map-geo-text">Geocodificando...</span></div>
+      </div>
+    </div>
+  <div class="main-scroll">
+  <div class="content">
+
+    <div class="screen active" id="screen-resumen">
+      <div class="stats-row" id="stats-row"></div>
+      <div id="price-chart-wrap" style="display:none;margin-bottom:1.4rem">
+        <div class="chart-panel">
+          <h4><i class="ti ti-chart-scatter" style="font-size:12px"></i> Precio vs. Superficie — todos los deptos</h4>
+          <div style="height:200px"><canvas id="price-chart-canvas"></canvas></div>
+          <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px">
+            <span style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#534AB7;display:inline-block"></span>Interesado</span>
+            <span style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#1D9E75;display:inline-block"></span>Visita</span>
+            <span style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#EF9F27;display:inline-block"></span>Favorito</span>
+            <span style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#fbbf24;display:inline-block"></span>Negociando</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+        <div>
+          <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.7rem;display:flex;align-items:center;gap:6px"><i class="ti ti-calendar"></i>Próximas visitas</div>
+          <div id="prox-visitas"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.7rem;display:flex;align-items:center;gap:6px"><i class="ti ti-star"></i>Mejores puntajes</div>
+          <div id="top-deptos"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-deptos">
+      <div class="filter-row">
+        <button class="fc on" onclick="setFilter(this,'todos')">Todos</button>
+        <button class="fc" onclick="setFilter(this,'interesado')">Interesados</button>
+        <button class="fc" onclick="setFilter(this,'visita')">Con visita</button>
+        <button class="fc" onclick="setFilter(this,'visitado')">Visitados</button>
+        <button class="fc" onclick="setFilter(this,'favorito')">Favoritos</button>
+        <button class="fc" onclick="setFilter(this,'negociacion')">Negociando</button>
+        <button class="fc" onclick="setFilter(this,'descartado')">Descartados</button>
+        <input type="text" id="search-q" placeholder="Buscar..." onkeyup="renderDeptos()" style="padding:5px 10px;border:1px solid var(--border);border-radius:20px;font-size:12px;background:var(--bg2);color:var(--text);font-family:inherit;width:130px">
+        <select class="sort-sel" id="sort-sel" onchange="renderDeptos()">
+          <option value="fecha">Más recientes</option>
+          <option value="precio_asc">Precio ↑</option>
+          <option value="precio_desc">Precio ↓</option>
+          <option value="ppm2_asc">USD/m² ↑</option>
+          <option value="ppm2_desc">USD/m² ↓</option>
+          <option value="stars">Mejor puntaje</option>
+          <option value="compat">Compatibilidad</option>
+          <option value="manual">Orden manual (arrastrar)</option>
+        </select>
+      </div>
+      <div class="filter-row" style="margin-bottom:.6rem">
+        <div class="filter-range-group">
+          <label>Precio USD:</label>
+          <input type="number" id="filter-price-min" placeholder="desde" oninput="renderDeptos()">
+          <span style="font-size:11px;color:var(--text3)">—</span>
+          <input type="number" id="filter-price-max" placeholder="hasta" oninput="renderDeptos()">
+        </div>
+        <div class="filter-range-group" style="margin-left:.5rem">
+          <label>m² mín:</label>
+          <input type="number" id="filter-m2-min" placeholder="0" oninput="renderDeptos()" style="width:60px">
+        </div>
+        <button class="btn btn-sm" onclick="clearRangeFilters()" style="margin-left:4px;font-size:11px"><i class="ti ti-x"></i> Limpiar filtros</button>
+      </div>
+      <div class="cards-grid" id="deptos-grid"></div>
+    </div>
+
+    <div class="screen" id="screen-visitas">
+      <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:1.5rem">
+        <div>
+          <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.7rem">Todas las visitas</div>
+          <div class="visit-list" id="all-visits"></div>
+        </div>
+        <div>
+          <div class="cal-toolbar">
+            <button class="btn btn-sm" onclick="changeCalMonth(-1)" aria-label="Mes anterior"><i class="ti ti-chevron-left"></i></button>
+            <strong id="cal-title"></strong>
+            <button class="btn btn-sm" onclick="changeCalMonth(1)" aria-label="Mes siguiente"><i class="ti ti-chevron-right"></i></button>
+          </div>
+          <div class="cal-head-row" id="cal-head"></div>
+          <div class="cal-grid" id="cal-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-comparar">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:.85rem">Seleccioná hasta 3 departamentos para comparar:</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:1.1rem" id="cmp-sel"></div>
+      <div id="cmp-table"></div>
+      <div id="cmp-ai-wrap" style="display:none;margin-top:1.25rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem">
+          <div style="font-size:12px;font-weight:500;color:var(--text2);display:flex;align-items:center;gap:6px"><i class="ti ti-brain"></i>Opinión de la IA <span class="groq-badge"><i class="ti ti-bolt" style="font-size:12px"></i>Groq</span></div>
+          <button class="btn btn-sm" id="cmp-ai-btn" onclick="askCmpAI()"><i class="ti ti-wand"></i>Analizar</button>
+        </div>
+        <div id="cmp-ai-result" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;font-size:13px;line-height:1.7;color:var(--text);min-height:48px"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-criterios">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.4rem">
+        <div>
+          <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.7rem">Criterios de búsqueda</div>
+          <div class="settings-card">
+            <div class="frow"><label>Presupuesto máximo (USD)</label><input type="number" id="cr-budget" value="180000" oninput="saveCriterios();renderCriterios()"></div>
+            <div class="frow"><label>Ambientes mínimos</label><input type="number" id="cr-rooms" value="2" oninput="saveCriterios();renderCriterios()"></div>
+            <div class="frow"><label>Superficie mínima (m²)</label><input type="number" id="cr-size" value="45" oninput="saveCriterios();renderCriterios()"></div>
+            <div class="frow"><label>Zona preferida</label><input type="text" id="cr-zona" value="Palermo / Villa Crespo" oninput="saveCriterios();renderCriterios()"></div>
+            <div class="frow"><label>Imprescindibles</label><textarea id="cr-must" oninput="saveCriterios();renderCriterios()">Balcón, luz natural, piso alto</textarea></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.7rem">Compatibilidad con mis criterios</div>
+          <div class="visit-list" id="compat-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-ajustes">
+
+      <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.7rem">Exportar / Importar datos</div>
+      <div class="settings-card" style="max-width:480px;margin-bottom:1.25rem">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:.85rem;line-height:1.6">Guardá todos tus departamentos y visitas en un archivo <code style="background:var(--bg3);padding:1px 6px;border-radius:4px;font-size:11px">.json</code> para transferirlos a otro dispositivo o navegador.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="exportData()"><i class="ti ti-download"></i>Exportar datos</button>
+          <button class="btn" onclick="document.getElementById('import-file-input').click()"><i class="ti ti-upload"></i>Importar datos</button>
+          <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importData(event)">
+        </div>
+        <div id="import-export-status" style="font-size:12px;margin-top:.7rem;min-height:18px"></div>
+      </div>
+
+      <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.7rem">Configuración de IA</div>
+      <div class="settings-card">
+        <div class="frow">
+          <label>Groq API Key</label>
+          <input type="password" id="cfg-groq-key" placeholder="gsk_..." oninput="saveConfig()">
+          <div style="font-size:11px;color:var(--text3);margin-top:5px">Usada para importar datos desde capturas y links. Obtenela gratis en <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent)">console.groq.com/keys</a>.</div>
+        </div>
+        <div id="key-status" style="font-size:12px;margin-top:4px"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:.85rem;line-height:1.6;max-width:480px">Tu API key se guarda solo en este navegador (localStorage) y únicamente se envía a la API de Groq cuando analizás una publicación. Groq ofrece un plan gratuito con cuota diaria.</div>
+    </div>
+
+  </div><!-- /.content -->
+  </div><!-- /.main-scroll -->
+</div><!-- /.main -->
+</div><!-- /.app -->
+
+<!-- Modal Agregar/Editar -->
+<div class="modal-wrap" id="modal-add" aria-hidden="true">
+<div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-add-title" tabindex="-1">
+  <div class="modal-head">
+    <h3 id="modal-add-title">Agregar departamento</h3>
+    <button class="ibt" onclick="closeM('modal-add')" aria-label="Cerrar"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="modal-body">
+    <div class="import-box">
+      <span class="import-label"><i class="ti ti-wand" style="font-size:13px;margin-right:4px"></i>Importar automáticamente con IA <span class="groq-badge"><i class="ti ti-bolt" style="font-size:12px"></i>Groq</span></span>
+      <div class="import-tabs">
+        <button class="itab active" onclick="switchTab(this,'tab-url')"><i class="ti ti-link" style="font-size:13px"></i> Link</button>
+        <button class="itab" onclick="switchTab(this,'tab-img')"><i class="ti ti-photo" style="font-size:13px"></i> Captura de pantalla</button>
+      </div>
+      <div class="import-panel active" id="tab-url">
+        <div class="import-row">
+          <input type="text" id="import-url" placeholder="https://www.zonaprop.com.ar/propiedades/...">
+          <button class="btn btn-primary btn-sm" onclick="importFromUrl()"><i class="ti ti-wand"></i>Importar</button>
+        </div>
+        <textarea id="import-listing-text" placeholder="Pegá acá el texto de la publicación. Los portales suelen bloquear la lectura automática desde el navegador." style="width:100%;min-height:90px;margin-top:8px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;background:var(--bg2);color:var(--text);font-family:inherit;resize:vertical"></textarea>
+      </div>
+      <div class="import-panel" id="tab-img">
+        <div class="upload-area" id="upload-area" onclick="document.getElementById('file-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor=''" ondrop="handleImageDrop(event)">
+          <i class="ti ti-photo-up"></i>
+          <p>Hacé clic, arrastrá imágenes o <strong>pegá con Ctrl+V</strong></p>
+          <small>Podés subir varias capturas a la vez — JPG, PNG, WEBP</small>
+        </div>
+        <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="handleImageUpload(event)">
+        <div id="img-preview-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+        <div id="img-count-badge" style="display:none;font-size:11px;color:var(--text2);margin-top:4px"></div>
+        <button class="btn btn-primary" id="btn-analyze" onclick="importFromImage()" style="display:none;margin-top:10px;width:100%"><i class="ti ti-bolt"></i>Analizar capturas con Groq Vision</button>
+      </div>
+      <div class="import-status" id="import-status"></div>
+    </div>
+
+    <div class="divider">o completar manualmente</div>
+
+    <div class="fgrid">
+      <div class="frow"><label>Nombre / referencia *</label><input type="text" id="f-name" placeholder="ej: 3A Palermo chico"></div>
+      <div class="frow"><label>Estado</label>
+        <select id="f-status">
+          <option value="interesado">Interesado</option>
+          <option value="visita">Visita programada</option>
+          <option value="visitado">Visitado</option>
+          <option value="favorito">Favorito</option>
+          <option value="negociacion">En negociación</option>
+          <option value="descartado">Descartado</option>
+        </select>
+      </div>
+    </div>
+    <div class="frow"><label>Dirección</label><input type="text" id="f-addr" placeholder="Av. Corrientes 1234, CABA"></div>
+    <div class="frow"><label>Link del aviso</label><input type="text" id="f-link" placeholder="https://..."></div>
+    <div class="fgrid">
+      <div class="frow"><label>Precio (USD)</label><input type="number" id="f-price" placeholder="150000"></div>
+      <div class="frow"><label>Expensas (ARS)</label><input type="number" id="f-expensas" placeholder="80000"></div>
+    </div>
+    <div class="fgrid3">
+      <div class="frow"><label>m² cubiertos</label><input type="number" id="f-m2c" placeholder="48"></div>
+      <div class="frow"><label>m² descubiertos</label><input type="number" id="f-m2d" placeholder="8"></div>
+      <div class="frow"><label>m² totales</label><input type="number" id="f-m2t" placeholder="56"></div>
+    </div>
+    <div class="fgrid">
+      <div class="frow"><label>Ambientes</label><input type="number" id="f-rooms" placeholder="2"></div>
+      <div class="frow"><label>Dormitorios</label><input type="number" id="f-beds" placeholder="1"></div>
+    </div>
+    <div class="fgrid">
+      <div class="frow"><label>Baños</label><input type="number" id="f-baths" placeholder="1"></div>
+      <div class="frow"><label>Piso</label><input type="text" id="f-floor" placeholder="3º B"></div>
+    </div>
+    <div class="fgrid">
+      <div class="frow"><label>Antigüedad</label><input type="text" id="f-age" placeholder="2015 / A estrenar"></div>
+      <div class="frow"><label>Orientación</label>
+        <select id="f-orient">
+          <option value="">—</option><option>Norte</option><option>Sur</option><option>Este</option><option>Oeste</option>
+          <option>Noreste</option><option>Noroeste</option><option>Sureste</option><option>Suroeste</option>
+        </select>
+      </div>
+    </div>
+    <div class="fgrid">
+      <div class="frow"><label>Luminosidad</label>
+        <select id="f-luz">
+          <option value="">—</option><option>Muy luminoso</option><option>Luminoso</option><option>Normal</option><option>Poco luminoso</option>
+        </select>
+      </div>
+      <div class="frow"><label>Contacto</label><input type="text" id="f-contact" placeholder="+54 11 ..."></div>
+    </div>
+    <div class="frow"><label>Tags / características</label><input type="text" id="f-tags" placeholder="cochera, amenities, portero 24h, balcón..."></div>
+    <div class="fgrid">
+      <div class="frow"><label>Pros</label><input type="text" id="f-pros" placeholder="Balcón, mucha luz..."></div>
+      <div class="frow"><label>Contras</label><input type="text" id="f-cons" placeholder="Ruidoso, baño chico..."></div>
+    </div>
+    <div class="frow"><label>Notas personales</label><textarea id="f-notes" placeholder="Impresiones, cosas a verificar..."></textarea></div>
+    <div class="frow">
+      <label>Videos de YouTube <span style="font-weight:400;color:var(--text3)">(pegá URLs separadas por coma o Enter)</span></label>
+      <textarea id="f-videos" placeholder="https://youtu.be/... , https://www.youtube.com/watch?v=..." style="min-height:55px"></textarea>
+    </div>
+    <div class="frow">
+      <label>Fotos <span style="font-weight:400;color:var(--text3)">(pegá URLs separadas por coma o Enter)</span></label>
+      <textarea id="f-photos" placeholder="https://... , https://..." style="min-height:55px" oninput="previewPhotos()"></textarea>
+      <div id="photos-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px"></div>
+    </div>
+    <div class="frow">
+      <label>Mi puntuación</label>
+      <div class="stars" id="form-stars" style="margin-top:5px">
+        <span class="star" onclick="setStar(1)">★</span><span class="star" onclick="setStar(2)">★</span>
+        <span class="star" onclick="setStar(3)">★</span><span class="star" onclick="setStar(4)">★</span>
+        <span class="star" onclick="setStar(5)">★</span>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:1rem;margin-top:.5rem">
+      <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.6rem"><i class="ti ti-calendar-event" style="font-size:13px;margin-right:4px"></i>Programar visita</div>
+      <div class="fgrid">
+        <div class="frow"><label>Fecha</label><input type="date" id="f-vdate"></div>
+        <div class="frow"><label>Hora</label><input type="time" id="f-vtime"></div>
+      </div>
+      <div class="frow"><label>Notas de la visita</label><input type="text" id="f-vnotes" placeholder="Llevar lista de preguntas..."></div>
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn" onclick="closeM('modal-add')">Cancelar</button>
+    <button class="btn btn-primary" onclick="saveDepto()"><i class="ti ti-check"></i>Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal Detalle -->
+<div class="modal-wrap" id="modal-detail" aria-hidden="true">
+<div class="modal" style="max-width:660px" role="dialog" aria-modal="true" aria-labelledby="det-title" tabindex="-1">
+  <div class="modal-head">
+    <h3 id="det-title">Detalle</h3>
+    <button class="ibt" onclick="closeM('modal-detail')" aria-label="Cerrar"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="modal-body" id="det-body"></div>
+  <div class="modal-foot">
+    <button class="btn" onclick="editCurrent()"><i class="ti ti-edit"></i>Editar</button>
+    <button class="btn btn-primary" onclick="closeM('modal-detail')">Cerrar</button>
+  </div>
+</div>
+</div>
+
+<script>
+const GROQ_ENDPOINT='https://api.groq.com/openai/v1/chat/completions';
+const GROQ_TEXT_MODEL='llama-3.3-70b-versatile';
+const GROQ_VISION_MODEL='meta-llama/llama-4-scout-17b-16e-instruct';
+
+let deptos=[],visits=[],editingId=null,formStars=0,filterSt='todos',cmpSel=[],currentDetailId=null;
+let captureImages=[]; // [{b64, mime}]
+let calDate=new Date();
+let lastFocusedElement=null;
+window._importedPhotos=[];window._importedSrc='manual';
+
+const SL={interesado:'Interesado',visita:'Visita programada',visitado:'Visitado',favorito:'Favorito',negociacion:'En negociación',descartado:'Descartado'};
+const SC={interesado:'st-interesado',visita:'st-visita',visitado:'st-visitado',favorito:'st-favorito',negociacion:'st-negociacion',descartado:'st-descartado'};
+const SCREENS=['resumen','deptos','mapa','visitas','comparar','criterios','ajustes'];
+
+function getKey(){return localStorage.getItem('ds-groq-key')||''}
+function saveConfig(){
+  const k=document.getElementById('cfg-groq-key').value.trim();
+  if(k)localStorage.setItem('ds-groq-key',k);else localStorage.removeItem('ds-groq-key');
+  document.getElementById('key-status').innerHTML=k?`<span style="color:var(--green-text)"><i class="ti ti-check" style="font-size:12px"></i> Key guardada</span>`:'';
+}
+function gid(){return Date.now()+Math.random().toString(36).substr(2,5)}
+function today(){const d=new Date();return`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`}
+function p2(n){return String(n).padStart(2,'0')}
+function fmtDate(s){if(!s)return'';const[y,m,d]=s.split('-');const mn=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];return`${parseInt(d)} ${mn[m-1]}`}
+function ppm2(d){const m=d.m2t||d.m2c;return(m&&d.price)?Math.round(d.price/m):null}
+function esc(value){
+  return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function safeUrl(value){
+  try{
+    const u=new URL(String(value||''));
+    return ['http:','https:'].includes(u.protocol)?u.href:'';
+  }catch(e){return'';}
+}
+function nl2br(value){return esc(value).replace(/\n/g,'<br>')}
+
+function load(){
+  try{
+    const d=localStorage.getItem('ds-deptos');
+    const v=localStorage.getItem('ds-visits');
+    if(d)deptos=JSON.parse(d);
+    if(v)visits=JSON.parse(v);
+  }catch(e){}
+  const k=getKey();
+  if(k){
+    const el=document.getElementById('cfg-groq-key');
+    if(el){el.value=k;document.getElementById('key-status').innerHTML=`<span style="color:var(--green-text)"><i class="ti ti-check" style="font-size:12px"></i> Key guardada</span>`;}
+  }
+  if(!deptos.length)seed();
+  loadCriterios();
+}
+
+function save(){
+  try{localStorage.setItem('ds-deptos',JSON.stringify(deptos));localStorage.setItem('ds-visits',JSON.stringify(visits));}catch(e){}
+}
+
+// ── THEME ──
+function applyTheme(){
+  const light=localStorage.getItem('ds-theme')==='light';
+  document.body.classList.toggle('light-mode',light);
+  const btn=document.getElementById('theme-toggle-btn');
+  if(btn)btn.innerHTML=light?'<i class="ti ti-moon"></i> Modo oscuro':'<i class="ti ti-sun"></i> Modo claro';
+}
+function toggleTheme(){
+  const light=document.body.classList.toggle('light-mode');
+  localStorage.setItem('ds-theme',light?'light':'dark');
+  const btn=document.getElementById('theme-toggle-btn');
+  if(btn)btn.innerHTML=light?'<i class="ti ti-moon"></i> Modo oscuro':'<i class="ti ti-sun"></i> Modo claro';
+}
+
+// ── ACTIVITY LOG ──
+function getLog(deptoId){
+  try{return JSON.parse(localStorage.getItem('ds-log-'+deptoId)||'[]');}catch(e){return[];}
+}
+function addLog(deptoId, text){
+  const log=getLog(deptoId);
+  log.unshift({id:gid(),text,date:new Date().toISOString()});
+  localStorage.setItem('ds-log-'+deptoId,JSON.stringify(log.slice(0,30)));
+}
+function deleteLog(deptoId, logId){
+  const log=getLog(deptoId).filter(l=>l.id!==logId);
+  localStorage.setItem('ds-log-'+deptoId,JSON.stringify(log));
+}
+function fmtLogDate(iso){
+  const d=new Date(iso),now=new Date(),diff=Math.floor((now-d)/86400000);
+  if(diff===0)return'hoy';if(diff===1)return'ayer';if(diff<7)return`hace ${diff}d`;
+  return d.toLocaleDateString('es-AR',{day:'numeric',month:'short'});
+}
+
+// ── PRICE HISTORY ──
+function getPriceHistory(deptoId){
+  try{return JSON.parse(localStorage.getItem('ds-ph-'+deptoId)||'[]');}catch(e){return[];}
+}
+function recordPriceChange(deptoId, oldPrice, newPrice){
+  if(!oldPrice||oldPrice===newPrice)return;
+  const hist=getPriceHistory(deptoId);
+  hist.unshift({price:oldPrice,date:new Date().toISOString()});
+  localStorage.setItem('ds-ph-'+deptoId,JSON.stringify(hist.slice(0,10)));
+  const diff=newPrice-oldPrice;
+  addLog(deptoId, diff<0?`💰 Precio bajó USD ${Math.abs(diff).toLocaleString()} (era USD ${oldPrice.toLocaleString()})`:`📈 Precio subió USD ${diff.toLocaleString()} (era USD ${oldPrice.toLocaleString()})`);
+}
+
+// ── DAYS SINCE ADDED ──
+function daysSince(d){
+  if(!d.createdAt)return null;
+  return Math.floor((Date.now()-new Date(d.createdAt).getTime())/86400000);
+}
+function daysBadge(d){
+  const days=daysSince(d);
+  if(days===null)return'';
+  let cls='days-badge';
+  if(days<=3)cls+=' fresh';else if(days<=14)cls+=' old';else cls+=' very-old';
+  return`<div class="${cls}"><i class="ti ti-clock" style="font-size:10px"></i>${days===0?'Hoy':days===1?'Ayer':'hace '+days+'d'}</div>`;
+}
+
+// ── SHARE DEPTO ──
+function shareDepto(id){
+  const d=deptos.find(x=>x.id===id);if(!d)return;
+  const pp=ppm2(d);
+  const text=`🏠 *${d.name}*\n📍 ${d.addr||'—'}\n💵 USD ${d.price?d.price.toLocaleString():'—'}${pp?' ('+pp.toLocaleString()+'/m²)':''}\n🛏 ${d.rooms||'?'} amb · ${d.m2t||d.m2c||'?'} m²\n${d.pros?'✓ '+d.pros+'\n':''}${d.cons?'✗ '+d.cons+'\n':''}${d.link?'🔗 '+d.link:''}`;
+  if(navigator.share){navigator.share({title:d.name,text}).catch(()=>copyText(text,id));}
+  else copyText(text,id);
+}
+function copyText(text,id){
+  navigator.clipboard.writeText(text).then(()=>showToast('Ficha copiada al portapapeles ✓','success')).catch(()=>{
+    const box=document.getElementById('share-box-'+id);
+    if(box){box.style.display='block';box.querySelector('textarea').value=text;box.querySelector('textarea').select();}
+  });
+}
+
+function exportData(){
+  const payload={
+    version:2,
+    exportedAt:new Date().toISOString(),
+    deptos,
+    visits,
+    pois:loadPois(),
+    zones:loadZones(),
+    geocache:loadGeoCache(),
+    criterios:(() => { try{ return JSON.parse(localStorage.getItem('ds-criterios')||'null'); }catch(e){return null;} })(),
+    config:(() => { try{ return {groqKey: localStorage.getItem('ds-groq-key')||''}; }catch(e){return {};} })()
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  const d=new Date();
+  a.download=`deptosearch_${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  const st=document.getElementById('import-export-status');
+  const extras=[];
+  if(payload.pois?.length)extras.push(`${payload.pois.length} lugares`);
+  if(payload.zones?.length)extras.push(`${payload.zones.length} zonas`);
+  if(st)st.innerHTML=`<span style="color:var(--green-text)"><i class="ti ti-check" style="font-size:12px"></i> Exportado: ${deptos.length} deptos, ${visits.length} visitas${extras.length?' · '+extras.join(', '):''}</span>`;
+}
+
+function importData(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  const st=document.getElementById('import-export-status');
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      const data=JSON.parse(ev.target.result);
+      const newDeptos=data.deptos||data;
+      const newVisits=data.visits||[];
+      const newPois=data.pois||[];
+      const newZones=data.zones||[];
+      const newGeoCache=data.geocache||null;
+      const newCriterios=data.criterios||null;
+      if(!Array.isArray(newDeptos))throw new Error('Formato inválido');
+
+      if(deptos.length>0){
+        const exportedAt=data.exportedAt?new Date(data.exportedAt).toLocaleString('es-AR'):'desconocida';
+        const extras=[];
+        if(newPois.length)extras.push(`${newPois.length} lugares`);
+        if(newZones.length)extras.push(`${newZones.length} zonas`);
+        const ok=confirm(
+          `¿Reemplazar todos los datos actuales con los del archivo?\n\n`+
+          `• Archivo: ${file.name}\n`+
+          `• Exportado: ${exportedAt}\n`+
+          `• Contiene: ${newDeptos.length} deptos, ${newVisits.length} visitas${extras.length?' · '+extras.join(', '):''}\n\n`+
+          `Tus datos actuales (${deptos.length} deptos, ${visits.length} visitas) serán reemplazados completamente.`
+        );
+        if(!ok){
+          if(st)st.innerHTML=`<span style="color:var(--text3)">Importación cancelada.</span>`;
+          e.target.value='';return;
+        }
+      }
+
+      deptos=newDeptos;
+      visits=newVisits;
+      save();
+
+      // Restore POIs and zones to localStorage
+      if(newPois.length){
+        try{localStorage.setItem(POI_KEY,JSON.stringify(newPois));}catch(e){}
+        pois=newPois;
+      }
+      if(newZones.length){
+        try{localStorage.setItem(ZONE_KEY,JSON.stringify(newZones));}catch(e){}
+        zones=newZones;
+      }
+      if(newGeoCache){
+        try{localStorage.setItem(GEO_CACHE_KEY,JSON.stringify(newGeoCache));}catch(e){}
+      }
+      if(newCriterios){
+        try{localStorage.setItem('ds-criterios',JSON.stringify(newCriterios));}catch(e){}
+        loadCriterios();
+      }
+
+      renderDeptos();renderResumen();
+
+      // If map is currently open, refresh it
+      if(leafletMap&&document.getElementById('screen-mapa').classList.contains('active')){
+        mapMarkers.forEach(m=>leafletMap.removeLayer(m.marker));mapMarkers=[];
+        poiMarkers.forEach(m=>leafletMap.removeLayer(m.marker));poiMarkers=[];
+        zoneCircles.forEach(c=>leafletMap.removeLayer(c));zoneCircles=[];
+        renderMapMarkers();renderPoiMarkers();renderPoiList();
+        renderZoneCircles();renderZoneList();renderMapList();
+      }
+
+      const extras=[];
+      if(newPois.length)extras.push(`${newPois.length} lugares`);
+      if(newZones.length)extras.push(`${newZones.length} zonas`);
+      if(st)st.innerHTML=`<span style="color:var(--green-text)"><i class="ti ti-check" style="font-size:12px"></i> Importado: ${newDeptos.length} deptos, ${newVisits.length} visitas${extras.length?' · '+extras.join(', '):''}</span>`;
+    }catch(err){
+      if(st)st.innerHTML=`<span style="color:var(--red-text)"><i class="ti ti-alert-circle" style="font-size:12px"></i> Error al leer el archivo: ${err.message}</span>`;
+    }
+    e.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+function seed(){
+  deptos=[{"id":"1780666248697zbulx","name":"Galvan 3545","addr":"Galvan 3545, Villa Urquiza, Capital Federal","price":92000,"expensas":78000,"rooms":2,"beds":1,"baths":1,"m2c":43,"m2d":3,"m2t":46,"floor":"","age":"12","orient":"Suroeste","luz":"Muy luminoso","status":"visita","link":"https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-venta-departamento-2-ambientes-luminoso-balcon-59069126.html","contact":"","pros":"Luminoso, 2 ambientes, muy bien distribuidos y con muy buena iluminación natural","cons":"no tiene ventanas en el baño, caro","tags":"Luminoso, Balcón, Apto Crédito","notes":"","stars":4,"photos":["https://imgar.zonapropcdn.com/avisos/resize/1/00/59/06/91/26/1200x1200/2051773042.jpg?isFirstImage=true"],"src":"captura"},{"id":"1780667586647e1v53","name":"Bauness 2906","addr":"Bauness 2906, Villa Urquiza, Capital Federal","price":82000,"expensas":144000,"rooms":2,"beds":1,"baths":1,"m2c":44,"m2d":7,"m2t":51,"floor":"","age":"54","orient":"Norte","luz":"Poco luminoso","status":"visita","link":"https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-departamento-de-dos-ambientes-apto-credito-en-58276618.html","contact":"","pros":"Excelente ubicacion, grande","cons":"poca luz, poco patio","tags":"Apto credito, amueblado","notes":"","stars":3,"photos":["https://imgar.zonapropcdn.com/avisos/resize/1/00/58/27/66/18/1200x1200/2038920237.jpg?isFirstImage=true"],"src":"captura"},{"id":"178066806977056090","name":"Burela 2515","addr":"Burela 2515, Villa Urquiza, Capital Federal","price":79800,"expensas":0,"rooms":2,"beds":1,"baths":1,"m2c":36,"m2d":18,"m2t":54,"floor":"1","age":"","orient":"","luz":"Normal","status":"interesado","link":"https://www.zonaprop.com.ar/propiedades/clasificado/veclphin-venta-ph-2-ambientes-con-terraza-y-balcon-en-villa-58846998.html","contact":"agustin.billon@century21.com.ar","pros":"a 300 metros de Av. los Constituyentes, a 300 metros de la estacion de tren, living-comedor, dormitorio con balcon","cons":"muy detonado, viejo, balcon a pulmon interno, no tiene escritura todavia","tags":"terraza, balcon","notes":"","stars":2,"photos":["https://imgar.zonapropcdn.com/avisos/resize/1/00/58/84/69/98/1200x1200/2045972299.jpg?isFirstImage=true"],"src":"captura"},{"id":"1780669180123ndfrx","name":"Araoz 700","addr":"Araoz 700, Villa Crespo, Capital Federal","price":79900,"expensas":99,"rooms":2,"beds":1,"baths":1,"m2c":36,"m2d":7,"m2t":43,"floor":"","age":"58","orient":"Norte","luz":"Luminoso","status":"interesado","link":"https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-departamento-2-ambientes-con-patio-59223344.html","contact":"","pros":"Silencioso, Luminoso, Patio","cons":"zona","tags":"Apto profesional, Apto crediticio, Cochera, Permuta","notes":"","stars":2,"photos":["https://imgar.zonapropcdn.com/avisos/resize/1/00/59/22/33/44/1200x1200/2055682798.jpg?isFirstImage=true"],"src":"captura"},{"id":"1780670882544ra232","name":"Julían Álvarez al 800","addr":"Julían Álvarez al 800, Villa Crespo, Capital Federal","price":70000,"expensas":80000,"rooms":2,"beds":1,"baths":1,"m2c":36,"m2d":7,"m2t":43,"floor":"PB","age":"50","orient":"Noroeste","luz":"","status":"interesado","link":"https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-venta-departamento-2-ambientes-en-villa-crespo-59180263.html","contact":"agustina.coste@coldwellbanker.com.ar","pros":"barato","cons":"zona, patio cubierto","tags":"frente","notes":"","stars":2,"photos":["https://imgar.zonapropcdn.com/avisos/resize/1/00/59/18/02/63/1200x1200/2054599760.jpg","https://imgar.zonapropcdn.com/avisos/resize/1/00/59/18/02/63/1200x1200/2054599697.jpg","https://imgar.zonapropcdn.com/avisos/resize/1/00/59/18/02/63/1200x1200/2054599736.jpg","https://imgar.zonapropcdn.com/avisos/resize/1/00/59/18/02/63/1200x1200/2054599708.jpg"],"src":"captura"},{"id":"1780671174446wjejq","name":"Uriarte al 1100","addr":"Uriarte al 1100, Villa Crespo","price":79900,"expensas":0,"rooms":3,"beds":1,"baths":1,"m2c":38.6,"m2d":7.61,"m2t":46.21,"floor":"PB","age":"35","orient":"","luz":"Poco luminoso","status":"visita","link":"https://www.solernou.com.ar/solernou-855","contact":"+541141775072, +5471277776, solemouserviciosinmobiliarios@gmail.com","pros":"Cocina con desayunador, patio interno semicubierto, baulera, posibilidad de uso para Airbnb o Booking, ubicación privilegiada","cons":"zona, sin living","tags":"Apto credito, financiacion, departamento interno","notes":"","stars":3,"photos":["https://static1.adinco.net/1406046_p/extra_large_u_68e0154795cc8.jpg"],"src":"captura"},{"id":"1780675537793kippy","name":"Av Juan B. Justo 3400","addr":"Av Juan B. Justo 3400, Villa Crespo, Capital Federal","price":79000,"expensas":110000,"rooms":3,"beds":2,"baths":1,"m2c":59,"m2d":0,"m2t":59,"floor":"1","age":"55","orient":"Oeste","luz":"Muy luminoso","status":"visita","link":"https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-departamento-en-venta-en-villa-crespo-capital-59286306.html","contact":"0221 555-1234","pros":"excelente ubicación, muy buen estado","cons":"zona","tags":"balcón, cocina, comedor, lavadero, living","notes":"","stars":5,"photos":["https://imgar.zonapropcdn.com/avisos/resize/1/00/59/28/63/06/1200x1200/2057166436.jpg"],"src":"captura"},{"id":"1780676354423a1ezm","name":"Justo Juan B 3500","addr":"Justo Juan B 3500, Villa Crespo, Capital Federal","price":73000,"expensas":0,"rooms":2,"beds":1,"baths":1,"m2c":34,"m2d":11,"m2t":45,"floor":"","age":"50","orient":"Noroeste","luz":"Muy luminoso","status":"interesado","link":"https://www.zonaprop.com.ar/propiedades/clasificado/veclapin-departamento-de-2-ambientes-en-venta-en-villa-crespo-59031054.html","contact":"miguelinasvillacrespo@gmail.com","pros":"excelente orientación, luminisidad, patio propio","cons":"zona","tags":"2 ambientes, departamento, venta, villa crespo","notes":"","stars":4,"photos":["https://imgar.zonapropcdn.com/avisos/resize/1/00/59/03/10/54/1200x1200/2051036730.jpg?isFirstImage=true"],"src":"captura"},{"id":"1780678258679q8ofo","name":"Avenida Monroe 4400","addr":"Avenida Monroe 4400, Villa Urquiza, Capital Federal","price":78000,"expensas":130000,"rooms":2,"beds":1,"baths":1,"m2c":32,"m2d":3,"m2t":35,"floor":"","age":"40","orient":"Oeste","luz":"Luminoso","status":"interesado","link":"https://www.argenprop.com/departamento-en-venta-en-villa-urquiza-2-ambientes--19679349","contact":"","pros":"Muy buena ubicación, luminoso","cons":"balcon chico, a pulmon interno","tags":"2 ambientes, balcón, luminoso","notes":"","stars":1,"photos":["https://www.argenprop.com/static-content/94397691/5fe0e924-6dd5-47aa-bc43-dd217e5cb1c3_u_large.jpg","https://www.argenprop.com/static-content/94397691/cb8f24f3-71db-465f-b550-45813735ad4a_u_large.jpg"],"src":"captura"}];
+  visits=[{"id":"1780666248697s0nm5","deptoId":"1780666248697zbulx","date":"2026-06-06","time":"09:00","notes":""},{"id":"1780667586647ea2q9","deptoId":"1780667586647e1v53","date":"2026-06-05","time":"18:30","notes":""},{"id":"1780676390564yhtd8","deptoId":"1780671174446wjejq","date":"2026-06-06","time":"11:30","notes":""},{"id":"17808620048135ykwf","deptoId":"1780667586647e1v53","date":"2026-06-08","time":"18:30","notes":""},{"id":"1780862056019l8hr6","deptoId":"1780675537793kippy","date":"2026-06-08","time":"10:00","notes":""}];
+  save();
+}
+
+// ---- GEMINI ----
+const EXTRACT_PROMPT=`Sos un asistente que extrae información de publicaciones de inmuebles argentinos.
+Analizá la imagen/texto y devolvé SOLO un JSON (sin explicación, sin markdown, sin bloques de código, solo el JSON puro):
+{"name":"referencia corta descriptiva","addr":"dirección completa","price":numero_usd_o_null,"expensas":numero_ars_o_null,"rooms":numero_o_null,"beds":numero_o_null,"baths":numero_o_null,"m2c":m2_cubiertos_o_null,"m2d":m2_descubiertos_o_null,"m2t":m2_totales_o_null,"floor":"piso y unidad o null","age":"antigüedad o null","orient":"orientacion o null","luz":"luminosidad estimada o null","tags":"caracteristicas separadas por coma o null","contact":"telefono o email o null","pros":"aspectos positivos separados por coma o null","cons":"aspectos negativos o null"}
+El precio SIEMPRE en USD. Expensas en ARS. Si no encontrás un campo ponelo como null.`;
+
+async function callGroq(prompt, imageB64, imageMime){
+  const key=getKey();
+  if(!key){setStatus('<span style="color:var(--red-text)"><i class="ti ti-alert-circle" style="font-size:13px"></i> Configurá tu Groq API Key en Ajustes primero</span>');return null;}
+  const model = imageB64 ? GROQ_VISION_MODEL : GROQ_TEXT_MODEL;
+  let content;
+  if(imageB64){
+    content=[
+      {type:'text',text:prompt},
+      {type:'image_url',image_url:{url:`data:${imageMime||'image/jpeg'};base64,${imageB64}`}}
+    ];
+  } else {
+    content=prompt;
+  }
+  const resp=await fetch(GROQ_ENDPOINT,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+    body:JSON.stringify({model,messages:[{role:'user',content}],temperature:0.1,max_tokens:800})
+  });
+  if(!resp.ok){
+    const err=await resp.json().catch(()=>({}));
+    throw new Error(err?.error?.message||`HTTP ${resp.status}`);
+  }
+  const data=await resp.json();
+  return data?.choices?.[0]?.message?.content||null;
+}
+
+async function importFromUrl(){
+  const url=document.getElementById('import-url').value.trim();
+  const listingText=document.getElementById('import-listing-text').value.trim();
+  if(!url){setStatus('Pegá un link primero');return;}
+  if(!safeUrl(url)){setStatus('El link no es válido');return;}
+  if(!listingText){setStatus('Pegá también el texto de la publicación para poder analizar sus datos');return;}
+  setStatus('<span class="spin"></span> Analizando con Groq...');
+  try{
+    const prompt=`${EXTRACT_PROMPT}\n\nURL de referencia: ${url}\n\nTexto de la publicación:\n${listingText}`;
+    const text=await callGroq(prompt);
+    if(!text)return;
+    const match=text.match(/\{[\s\S]*\}/);
+    if(!match)throw new Error('No se pudo parsear la respuesta');
+    fillForm(JSON.parse(match[0]),url,'url');
+    setStatus('<span style="color:var(--green-text)"><i class="ti ti-check" style="font-size:13px"></i> Datos importados correctamente</span>');
+  }catch(e){
+    setStatus(`<span style="color:var(--red-text)"><i class="ti ti-alert-circle" style="font-size:13px"></i> ${e.message||'No se pudieron extraer datos'}</span>`);
+  }
+}
+
+function handleImageUpload(e){
+  const files=Array.from(e.target.files);
+  if(!files.length)return;
+  addImagesToQueue(files);
+}
+
+function handleImageDrop(e){
+  e.preventDefault();
+  document.getElementById('upload-area').style.borderColor='';
+  const files=Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/'));
+  if(files.length)addImagesToQueue(files);
+}
+
+function addImagesToQueue(files){
+  files.forEach(file=>{
+    const mime=file.type||'image/jpeg';
+    const reader=new FileReader();
+    reader.onload=function(ev){
+      captureImages.push({b64:ev.target.result.split(',')[1], mime, dataUrl:ev.target.result, name:file.name||'captura'});
+      renderImageQueue();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function addImageFromClipboard(dataUrl, mime){
+  const b64=dataUrl.split(',')[1];
+  captureImages.push({b64, mime, dataUrl, name:'Pegado'});
+  renderImageQueue();
+}
+
+function removeImageFromQueue(idx){
+  captureImages.splice(idx,1);
+  renderImageQueue();
+}
+
+function renderImageQueue(){
+  const list=document.getElementById('img-preview-list');
+  const badge=document.getElementById('img-count-badge');
+  const btnAnalyze=document.getElementById('btn-analyze');
+  if(!captureImages.length){
+    list.innerHTML='';
+    badge.style.display='none';
+    btnAnalyze.style.display='none';
+    return;
+  }
+  list.innerHTML=captureImages.map((img,i)=>`
+    <div style="position:relative;display:inline-block">
+      <img src="${img.dataUrl}" style="height:72px;width:100px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" alt="${esc(img.name)}">
+      <button onclick="removeImageFromQueue(${i})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0" title="Quitar"><i class="ti ti-x" style="font-size:10px"></i></button>
+      <div style="font-size:9px;color:var(--text3);text-align:center;margin-top:2px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(img.name)}</div>
+    </div>
+  `).join('');
+  badge.style.display='block';
+  badge.innerHTML=`<i class="ti ti-photos" style="font-size:11px;margin-right:3px"></i>${captureImages.length} imagen${captureImages.length>1?'s':''} cargada${captureImages.length>1?'s':''} — la IA va a analizar todas y combinar los datos`;
+  btnAnalyze.style.display='block';
+  btnAnalyze.innerHTML=`<i class="ti ti-bolt"></i> Analizar ${captureImages.length>1?captureImages.length+' capturas':'captura'} con Groq Vision`;
+}
+
+async function importFromImage(){
+  if(!captureImages.length){setStatus('Subí al menos una imagen primero');return;}
+  setStatus('<span class="spin"></span> Analizando capturas con Groq Vision...');
+  try{
+    let merged={};
+    // Analyze each image and merge results (first non-null value wins, except arrays)
+    for(let i=0;i<captureImages.length;i++){
+      if(captureImages.length>1) setStatus(`<span class="spin"></span> Analizando imagen ${i+1} de ${captureImages.length}...`);
+      const img=captureImages[i];
+      const text=await callGroq(EXTRACT_PROMPT, img.b64, img.mime);
+      if(!text)continue;
+      const match=text.match(/\{[\s\S]*\}/);
+      if(!match)continue;
+      const parsed=JSON.parse(match[0]);
+      // Merge: fill in nulls from subsequent images
+      Object.keys(parsed).forEach(k=>{
+        if(merged[k]==null && parsed[k]!=null && parsed[k]!=='null') merged[k]=parsed[k];
+      });
+    }
+    if(!Object.keys(merged).length) throw new Error('No se pudo parsear ninguna respuesta');
+    fillForm(merged,'','captura');
+    setStatus(`<span style="color:var(--green-text)"><i class="ti ti-check" style="font-size:13px"></i> ${captureImages.length>1?captureImages.length+' capturas analizadas':'Captura analizada'} correctamente</span>`);
+  }catch(e){
+    setStatus(`<span style="color:var(--red-text)"><i class="ti ti-alert-circle" style="font-size:13px"></i> ${e.message||'No se pudo analizar la imagen'}</span>`);
+  }
+}
+
+function setStatus(html){document.getElementById('import-status').innerHTML=html}
+
+function fillForm(p,url,src){
+  const f=(id,v)=>{if(v!=null&&v!=='null'&&v!==undefined){const el=document.getElementById(id);if(el)el.value=v;}};
+  f('f-name',p.name);f('f-addr',p.addr);f('f-price',p.price);f('f-expensas',p.expensas);
+  f('f-rooms',p.rooms);f('f-beds',p.beds);f('f-baths',p.baths);
+  f('f-m2c',p.m2c);f('f-m2d',p.m2d);f('f-m2t',p.m2t);
+  f('f-floor',p.floor);f('f-age',p.age);f('f-tags',p.tags);f('f-contact',p.contact);
+  f('f-pros',p.pros);f('f-cons',p.cons);
+  if(p.orient){const el=document.getElementById('f-orient');if(el)for(let o of el.options)if(o.value.toLowerCase()===String(p.orient).toLowerCase()){el.value=o.value;break;}}
+  if(p.luz){const el=document.getElementById('f-luz');if(el)for(let o of el.options)if(o.value.toLowerCase().includes(String(p.luz).toLowerCase())||String(p.luz).toLowerCase().includes(o.value.toLowerCase())){el.value=o.value;break;}}
+  if(url)document.getElementById('f-link').value=url;
+  window._importedPhotos=[];window._importedSrc=src||'manual';
+  autoM2();
+}
+
+function autoM2(){
+  const c=parseFloat(document.getElementById('f-m2c').value)||0;
+  const d=parseFloat(document.getElementById('f-m2d').value)||0;
+  const t=document.getElementById('f-m2t');
+  if((!t.value||parseFloat(t.value)===0)&&(c||d))t.value=c+d;
+}
+document.getElementById('f-m2c').addEventListener('input',autoM2);
+document.getElementById('f-m2d').addEventListener('input',autoM2);
+
+function switchTab(btn,panelId){
+  document.querySelectorAll('.itab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.import-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(panelId).classList.add('active');
+  document.getElementById('import-status').innerHTML='';
+}
+
+function parsePhotosField(val){
+  if(!val||!val.trim())return[];
+  return val.split(/[\n,]+/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
+}
+
+function parseVideosField(val){
+  if(!val||!val.trim())return[];
+  return val.split(/[\n,]+/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
+}
+
+function getYouTubeId(url){
+  if(!url)return null;
+  const m=url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+  return m?m[1]:null;
+}
+
+function previewPhotos(){
+  const urls=parsePhotosField(document.getElementById('f-photos').value);
+  const wrap=document.getElementById('photos-preview');
+  if(!urls.length){wrap.innerHTML='';return;}
+  wrap.innerHTML=urls.map(safeUrl).filter(Boolean).map(u=>`<img src="${esc(u)}" style="height:64px;width:90px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" onerror="this.style.opacity='.25'" alt="">`).join('');
+}
+
+function setStar(n){formStars=n;document.querySelectorAll('#form-stars .star').forEach((s,i)=>s.classList.toggle('on',i<n))}
+
+function resetForm(){
+  ['f-name','f-addr','f-price','f-expensas','f-rooms','f-beds','f-baths','f-m2c','f-m2d','f-m2t',
+   'f-floor','f-age','f-contact','f-tags','f-pros','f-cons','f-notes','f-photos','f-videos','f-link','f-vdate','f-vtime','f-vnotes','import-url','import-listing-text']
+  .forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('f-status').value='interesado';
+  document.getElementById('f-orient').value='';
+  document.getElementById('f-luz').value='';
+  document.getElementById('import-status').innerHTML='';
+  document.getElementById('img-preview-list').innerHTML='';
+  document.getElementById('img-count-badge').style.display='none';
+  document.getElementById('photos-preview').innerHTML='';
+  document.getElementById('btn-analyze').style.display='none';
+  document.getElementById('file-input').value='';
+  captureImages=[];
+  formStars=0;setStar(0);
+  window._importedPhotos=[];window._importedSrc='manual';
+}
+
+function saveDepto(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){alert('Poné un nombre o referencia');return;}
+  const m2c=parseFloat(document.getElementById('f-m2c').value)||0;
+  const m2d=parseFloat(document.getElementById('f-m2d').value)||0;
+  const m2t=parseFloat(document.getElementById('f-m2t').value)||(m2c+m2d)||0;
+  const newPrice=parseFloat(document.getElementById('f-price').value)||0;
+  const d={
+    id:editingId||gid(),name,
+    addr:document.getElementById('f-addr').value.trim(),
+    price:newPrice,
+    expensas:parseFloat(document.getElementById('f-expensas').value)||0,
+    rooms:parseFloat(document.getElementById('f-rooms').value)||0,
+    beds:parseFloat(document.getElementById('f-beds').value)||0,
+    baths:parseFloat(document.getElementById('f-baths').value)||0,
+    m2c,m2d,m2t,
+    floor:document.getElementById('f-floor').value.trim(),
+    age:document.getElementById('f-age').value.trim(),
+    orient:document.getElementById('f-orient').value,
+    luz:document.getElementById('f-luz').value,
+    status:document.getElementById('f-status').value,
+    link:document.getElementById('f-link').value.trim(),
+    contact:document.getElementById('f-contact').value.trim(),
+    pros:document.getElementById('f-pros').value.trim(),
+    cons:document.getElementById('f-cons').value.trim(),
+    tags:document.getElementById('f-tags').value.trim(),
+    notes:document.getElementById('f-notes').value.trim(),
+    stars:formStars,
+    photos:parsePhotosField(document.getElementById('f-photos').value)||(window._importedPhotos||[]),
+    videos:parseVideosField(document.getElementById('f-videos').value),
+    src:window._importedSrc||'manual'
+  };
+  if(editingId){
+    const i=deptos.findIndex(x=>x.id===editingId);
+    if(i>=0){
+      const old=deptos[i];
+      d.createdAt=old.createdAt||new Date().toISOString();
+      // detect price change
+      if(old.price&&newPrice&&old.price!==newPrice)recordPriceChange(editingId,old.price,newPrice);
+      // detect status change
+      if(old.status&&old.status!==d.status)addLog(editingId,`🔄 Estado cambió a "${SL[d.status]||d.status}"`);
+      deptos[i]=d;
+    }
+  } else {
+    d.createdAt=new Date().toISOString();
+    deptos.push(d);
+    addLog(d.id,'➕ Departamento agregado');
+  }
+  const vd=document.getElementById('f-vdate').value;
+  const vt=document.getElementById('f-vtime').value;
+  const vn=document.getElementById('f-vnotes').value;
+  if(vd){
+    const ei=visits.findIndex(v=>v.deptoId===d.id&&v.date>=today());
+    if(ei>=0){visits[ei]={...visits[ei],date:vd,time:vt,notes:vn};}
+    else visits.push({id:gid(),deptoId:d.id,date:vd,time:vt,notes:vn});
+  }
+  save();closeM('modal-add');renderScreen(curScreen());
+}
+
+function openAddModal(){editingId=null;resetForm();document.getElementById('modal-add-title').textContent='Agregar departamento';openM('modal-add')}
+
+function editDepto(id){
+  const d=deptos.find(x=>x.id===id);if(!d)return;
+  editingId=id;window._importedPhotos=d.photos||[];window._importedSrc=d.src||'manual';
+  const f=(eid,v)=>{const el=document.getElementById(eid);if(el&&v!=null)el.value=v;};
+  f('f-name',d.name);f('f-addr',d.addr);f('f-price',d.price);f('f-expensas',d.expensas);
+  f('f-rooms',d.rooms);f('f-beds',d.beds);f('f-baths',d.baths);
+  f('f-m2c',d.m2c);f('f-m2d',d.m2d);f('f-m2t',d.m2t);
+  f('f-floor',d.floor);f('f-age',d.age);
+  document.getElementById('f-status').value=d.status||'interesado';
+  document.getElementById('f-orient').value=d.orient||'';
+  document.getElementById('f-luz').value=d.luz||'';
+  f('f-link',d.link);f('f-contact',d.contact);f('f-pros',d.pros);f('f-cons',d.cons);f('f-tags',d.tags);f('f-notes',d.notes);
+  // photos
+  const photosEl=document.getElementById('f-photos');
+  if(photosEl){photosEl.value=(d.photos||[]).join('\n');previewPhotos();}
+  // videos
+  const videosEl=document.getElementById('f-videos');
+  if(videosEl)videosEl.value=(d.videos||[]).join('\n');
+  const v=visits.find(x=>x.deptoId===id&&x.date>=today());
+  f('f-vdate',v?v.date:'');f('f-vtime',v?v.time:'');f('f-vnotes',v?v.notes:'');
+  document.getElementById('import-url').value=d.link||'';
+  document.getElementById('import-status').innerHTML='';
+  formStars=d.stars||0;setStar(formStars);
+  document.getElementById('modal-add-title').textContent='Editar departamento';
+  closeM('modal-detail');
+  openM('modal-add');
+}
+
+function editCurrent(){if(currentDetailId)editDepto(currentDetailId)}
+
+function deleteDepto(id){
+  if(!confirm('¿Eliminar este departamento?'))return;
+  deptos=deptos.filter(d=>d.id!==id);
+  visits=visits.filter(v=>v.deptoId!==id);
+  save();renderScreen(curScreen());
+}
+
+function srcInfo(src){
+  const map={argenprop:['Argenprop','src-argenprop'],zonaprop:['Zonaprop','src-zonaprop'],mercadolibre:['MercadoLibre','src-mercadolibre'],manual:['Manual','src-manual'],url:['Link','src-url'],captura:['Captura','src-captura']};
+  return map[src||'manual']||['Manual','src-manual'];
+}
+
+function openDetail(id){
+  const d=deptos.find(x=>x.id===id);if(!d)return;
+  currentDetailId=id;
+  document.getElementById('det-title').textContent=d.name;
+  const pp=ppm2(d);
+  const vs=visits.filter(v=>v.deptoId===id).sort((a,b)=>a.date.localeCompare(b.date));
+  const pros=d.pros?d.pros.split(',').map(x=>x.trim()).filter(Boolean):[];
+  const cons=d.cons?d.cons.split(',').map(x=>x.trim()).filter(Boolean):[];
+  const tags=d.tags?d.tags.split(',').map(x=>x.trim()).filter(Boolean):[];
+  const [srcLabel,srcCls]=srcInfo(d.src);
+  const log=getLog(id);
+  const hist=getPriceHistory(id);
+  const days=daysSince(d);
+
+  // Price history indicator
+  let priceHistHtml='';
+  if(hist.length){
+    const lastOld=hist[0].price;
+    const diff=d.price-lastOld;
+    priceHistHtml=`<div class="price-hist ${diff<0?'down':'up'}"><i class="ti ti-trending-${diff<0?'down':'up'}" style="font-size:11px"></i>${diff<0?'Bajó':'Subió'} USD ${Math.abs(diff).toLocaleString()} <span style="color:var(--text3)">era USD ${lastOld.toLocaleString()}</span></div>`;
+  }
+
+  document.getElementById('det-body').innerHTML=`
+    ${d.photos&&d.photos.length?`<div class="det-gallery">${d.photos.slice(0,6).map(safeUrl).filter(Boolean).map(p=>`<img src="${esc(p)}" alt="" onerror="this.style.display='none'">`).join('')}</div>`:''}
+    ${d.videos&&d.videos.length?`<div class="det-section"><h4>Videos</h4><div id="videos-container-${d.id}" style="display:flex;flex-direction:column;gap:10px"><div style="color:var(--text3);font-size:12px">Cargando videos…</div></div></div>`:''}
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.1rem">
+      <div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:4px"><i class="ti ti-map-pin" style="font-size:13px"></i> ${esc(d.addr||'—')}</div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:3px">
+          <span style="font-size:20px;font-weight:600;color:var(--accent)">USD ${d.price?d.price.toLocaleString():'—'}</span>
+          ${pp?`<span class="ppm2">USD ${pp.toLocaleString()}/m²</span>`:''}
+        </div>
+        ${priceHistHtml}
+        ${d.expensas?`<div style="font-size:12px;color:var(--text2);margin-top:2px">Expensas $${d.expensas.toLocaleString()} ARS</div>`:''}
+        ${days!==null?`<div class="days-badge ${days<=3?'fresh':days<=14?'old':'very-old'}" style="margin-top:4px"><i class="ti ti-clock" style="font-size:10px"></i>En seguimiento: ${days===0?'desde hoy':days===1?'desde ayer':'hace '+days+' días'}</div>`:''}
+      </div>
+      <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        <span class="badge ${SC[d.status]}">${SL[d.status]}</span>
+        <div class="stars">${[1,2,3,4,5].map(i=>`<span class="star${i<=(d.stars||0)?' on':''}">★</span>`).join('')}</div>
+        <span class="src-pill ${srcCls}">${srcLabel}</span>
+      </div>
+    </div>
+    <div class="det-section"><h4>Datos del inmueble</h4>
+      <div class="kv-grid">
+        ${d.rooms?`<div class="kv"><div class="k">Ambientes</div><div class="v">${d.rooms}</div></div>`:''}
+        ${d.beds?`<div class="kv"><div class="k">Dormitorios</div><div class="v">${d.beds}</div></div>`:''}
+        ${d.baths?`<div class="kv"><div class="k">Baños</div><div class="v">${d.baths}</div></div>`:''}
+        ${d.m2c?`<div class="kv"><div class="k">m² cubiertos</div><div class="v">${d.m2c} m²</div></div>`:''}
+        ${d.m2d?`<div class="kv"><div class="k">m² descubiertos</div><div class="v">${d.m2d} m²</div></div>`:''}
+        ${d.m2t?`<div class="kv"><div class="k">m² totales</div><div class="v accent">${d.m2t} m²</div></div>`:''}
+        ${pp?`<div class="kv"><div class="k">Precio / m²</div><div class="v accent">USD ${pp.toLocaleString()}</div></div>`:''}
+        ${d.floor?`<div class="kv"><div class="k">Piso</div><div class="v">${d.floor}</div></div>`:''}
+        ${d.age?`<div class="kv"><div class="k">Antigüedad</div><div class="v">${d.age}</div></div>`:''}
+        ${d.orient?`<div class="kv"><div class="k">Orientación</div><div class="v">${d.orient}</div></div>`:''}
+        ${d.luz?`<div class="kv"><div class="k">Luminosidad</div><div class="v">${d.luz}</div></div>`:''}
+        ${d.contact?`<div class="kv"><div class="k">Contacto</div><div class="v" style="font-size:12px">${esc(d.contact)}</div></div>`:''}
+      </div>
+    </div>
+    ${pros.length||cons.length?`<div class="det-section"><h4>Pros y contras</h4><div class="pros-cons">
+      ${pros.length?`<div class="pc pros"><h5>✓ Pros</h5><p>${pros.map(esc).join(' · ')}</p></div>`:''}
+      ${cons.length?`<div class="pc cons"><h5>✗ Contras</h5><p>${cons.map(esc).join(' · ')}</p></div>`:''}
+    </div></div>`:''}
+    ${tags.length?`<div class="det-section"><h4>Características</h4><div class="tag-list">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div></div>`:''}
+    ${d.notes?`<div class="det-section"><h4>Notas</h4><div style="font-size:13px;line-height:1.7;color:var(--text)">${nl2br(d.notes)}</div></div>`:''}
+    ${vs.length?`<div class="det-section"><h4>Visitas</h4><div class="visit-list">${vs.map(v=>`<div class="vi"><div><div class="vi-dt"><i class="ti ti-calendar-check"></i> ${fmtDate(v.date)}${v.time?' a las '+v.time:''}</div>${v.notes?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${v.notes}</div>`:''}</div></div>`).join('')}</div></div>`:''}
+
+    <!-- Activity log -->
+    <div class="det-section">
+      <h4>Actividad</h4>
+      <div class="activity-log" id="det-log-${id}">
+        ${log.length?log.map(l=>`<div class="act-item"><div class="act-dot"></div><div><div class="act-text">${esc(l.text)}</div><div class="act-date">${fmtLogDate(l.date)}</div></div><button class="ibt" style="margin-left:auto;font-size:12px" onclick="deleteLog('${id}','${l.id}');openDetail('${id}')" aria-label="Eliminar actividad"><i class="ti ti-x"></i></button></div>`).join(''):'<div style="font-size:12px;color:var(--text3)">Sin actividad registrada</div>'}
+      </div>
+      <div class="act-input-row">
+        <input type="text" id="act-new-${id}" placeholder="Agregar nota rápida..." onkeydown="if(event.key==='Enter'){addLog('${id}',this.value.trim());this.value='';openDetail('${id}');}">
+        <button class="btn btn-sm" onclick="const v=document.getElementById('act-new-${id}').value.trim();if(v){addLog('${id}',v);openDetail('${id}');}"><i class="ti ti-plus"></i></button>
+      </div>
+    </div>
+
+    <!-- AI Analysis -->
+    <div class="det-section" id="det-ai-section-${id}">
+      <h4>Análisis IA <span class="groq-badge"><i class="ti ti-bolt" style="font-size:12px"></i>Groq</span></h4>
+      <button class="btn-ai-depto" onclick="analyzeDeptoAI('${id}')"><i class="ti ti-wand"></i> Analizar este departamento con IA</button>
+      <div class="ai-result-box" id="det-ai-result-${id}" style="display:none"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:.75rem;flex-wrap:wrap">
+      ${safeUrl(d.link)?`<a href="${esc(safeUrl(d.link))}" target="_blank" rel="noopener noreferrer" style="font-size:13px;color:var(--accent)">Ver aviso original →</a>`:''}
+      <button class="btn btn-sm" onclick="shareDepto('${id}')" style="margin-left:auto"><i class="ti ti-share"></i> Compartir ficha</button>
+    </div>
+  `;
+  openM('modal-detail');
+  if(d.videos&&d.videos.length) loadVideos(d);
+}
+
+function loadVideos(d){
+  const container=document.getElementById('videos-container-'+d.id);
+  if(!container)return;
+  const videos=d.videos.map(v=>getYouTubeId(v)).filter(Boolean);
+  if(!videos.length){container.innerHTML='<div style="font-size:12px;color:var(--text3)">Sin videos válidos</div>';return;}
+  container.innerHTML=videos.map(vid=>`
+    <a href="https://www.youtube.com/watch?v=${vid}" target="_blank" rel="noopener"
+      style="display:block;position:relative;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);cursor:pointer;text-decoration:none">
+      <img src="https://img.youtube.com/vi/${vid}/hqdefault.jpg" alt="Video"
+        style="width:100%;display:block;aspect-ratio:16/9;object-fit:cover">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35)"
+        onmouseover="this.style.background='rgba(0,0,0,.55)'" onmouseout="this.style.background='rgba(0,0,0,.35)'">
+        <div style="width:62px;height:44px;background:#ff0000;border-radius:10px;display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="white"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+      </div>
+      <div style="position:absolute;bottom:0;left:0;right:0;padding:8px 10px;background:linear-gradient(transparent,rgba(0,0,0,.7));font-size:11px;color:#ccc;display:flex;align-items:center;gap:5px">
+        <i class="ti ti-brand-youtube" style="color:#ff0000"></i> Ver en YouTube
+      </div>
+    </a>`).join('');
+}
+
+function cardHtml(d){
+  const pp=ppm2(d);
+  const nv=visits.filter(v=>v.deptoId===d.id&&v.date>=today()).sort((a,b)=>a.date.localeCompare(b.date))[0];
+  const [srcLabel,srcCls]=srcInfo(d.src);
+  const mainPhoto=d.photos&&d.photos.length?safeUrl(d.photos[0]):null;
+  const hist=getPriceHistory(d.id);
+  const lastHist=hist[0];
+  const priceHist=lastHist&&d.price?`<div class="price-hist ${d.price<lastHist.price?'down':'up'}" style="font-size:10px"><i class="ti ti-trending-${d.price<lastHist.price?'down':'up'}" style="font-size:10px"></i>${d.price<lastHist.price?'↓ bajó':'↑ subió'} USD ${Math.abs(d.price-lastHist.price).toLocaleString()}</div>`:'';
+  return`<div class="dcard" onclick="openDetail('${d.id}')">
+    <div class="dcard-img">${mainPhoto?`<img src="${mainPhoto}" alt="">`:`<div class="no-img"><i class="ti ti-photo"></i><span>Sin foto</span></div>`}</div>
+    <div class="dcard-body">
+      ${daysBadge(d)}
+      <div class="dcard-title">${esc(d.name)}</div>
+      <div class="dcard-addr"><i class="ti ti-map-pin" style="font-size:12px"></i> ${esc(d.addr||'—')}</div>
+      <div class="price-row">
+        <span class="price">USD ${d.price?d.price.toLocaleString():'—'}</span>
+        ${pp?`<span class="ppm2">USD ${pp.toLocaleString()}/m²</span>`:''}
+      </div>
+      ${priceHist}
+      <div class="meta-chips">
+        ${d.rooms?`<span class="chip"><i class="ti ti-layout-2"></i>${d.rooms} amb.</span>`:''}
+        ${d.m2t?`<span class="chip"><i class="ti ti-arrows-maximize"></i>${d.m2t} m²</span>`:''}
+        ${d.orient?`<span class="chip"><i class="ti ti-compass"></i>${d.orient}</span>`:''}
+        ${d.luz?`<span class="chip"><i class="ti ti-sun"></i>${d.luz.split(' ')[0]}</span>`:''}
+      </div>
+      ${nv?`<div style="font-size:11px;color:var(--green-text);background:var(--green-bg);border-radius:5px;padding:3px 8px;display:inline-flex;align-items:center;gap:5px;margin-bottom:6px"><i class="ti ti-calendar-check" style="font-size:13px"></i>${fmtDate(nv.date)} ${nv.time}</div>`:''}
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span class="badge ${SC[d.status]}">${SL[d.status]}</span>
+        <div class="stars">${[1,2,3,4,5].map(i=>`<span class="star${i<=(d.stars||0)?' on':''}">★</span>`).join('')}</div>
+      </div>
+    </div>
+    <div class="dcard-foot">
+      <span class="src-pill ${srcCls}">${srcLabel}</span>
+      <div style="display:flex;gap:4px" onclick="event.stopPropagation()">
+        ${safeUrl(d.link)?`<button class="ibt" onclick="window.open('${esc(safeUrl(d.link))}','_blank','noopener')" title="Ver aviso" aria-label="Ver aviso"><i class="ti ti-external-link"></i></button>`:''}
+        <button class="ibt" onclick="editDepto('${d.id}')" title="Editar"><i class="ti ti-edit"></i></button>
+        <button class="ibt" onclick="deleteDepto('${d.id}')" title="Eliminar" style="color:var(--red-text)"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function setFilter(btn,st){document.querySelectorAll('.fc').forEach(b=>b.classList.remove('on'));btn.classList.add('on');filterSt=st;renderDeptos()}
+
+// Normaliza texto: minúsculas + sin tildes
+function norm(s){
+  return (s||'').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'');
+}
+
+// Sinónimos inmobiliarios: cada grupo son términos equivalentes
+const SINONIMOS=[
+  ['luz natural','luminoso','muy luminoso','bastante luminoso','luminosidad','soleado','asoleado','iluminado','claridad','buena luz'],
+  ['balcon','balcón','terraza','patio','exterior','galeria','galería'],
+  ['piso alto','altura','vista','vistas','no planta baja'],
+  ['silencioso','tranquilo','sin ruido','poco ruido','quieto'],
+  ['nuevo','a estrenar','recien refaccionado','recién refaccionado','refaccionado','reciclado'],
+  ['cochera','garage','garaje','estacionamiento'],
+  ['pileta','piscina','natacion'],
+  ['parrilla','asador','quincho'],
+  ['baulera','deposito','depósito','guardamuebles'],
+  ['apto credito','apto crédito','banco','financiacion','financiación','hipoteca'],
+  ['portero','seguridad','vigilancia','conserjeria','conserjería'],
+  ['lavadero','lavarropas'],
+  ['cerca subte','subte','metro','transporte','colectivo','omnibus'],
+  ['frente','contrafrente','interno'],
+  ['amueblado','con muebles','equipado'],
+  ['gas natural','gas','gasoducto'],
+  ['calefaccion','calefacción','calefaccionado','calefactor','radiadores'],
+];
+
+// Dado un término, devuelve todos los sinónimos de su grupo
+function getSinonimos(term){
+  const t=norm(term);
+  for(const grupo of SINONIMOS){
+    if(grupo.some(s=>norm(s)===t||norm(s).includes(t)||t.includes(norm(s)))){
+      return grupo;
+    }
+  }
+  return [term];
+}
+
+// Prefijos negativos que invalidan un match
+const NEGACIONES=['poco','no','sin','nada','muy poco','casi sin','falta de','falta','carece de'];
+
+// Chequea si un haystack contiene el término O algún sinónimo suyo,
+// pero NO si viene precedido por una negación
+function matchesTerm(haystack, term){
+  const h=norm(haystack);
+  const syns=getSinonimos(term);
+  return syns.some(s=>{
+    const sn=norm(s);
+    const idx=h.indexOf(sn);
+    if(idx===-1)return false;
+    // Revisar que no haya una negación inmediatamente antes
+    const before=h.slice(Math.max(0,idx-12),idx).trimEnd();
+    const negado=NEGACIONES.some(neg=>before.endsWith(norm(neg)));
+    return !negado;
+  });
+}
+
+function getCriterioInputs(){
+  return {
+    budget:parseFloat(document.getElementById('cr-budget')?.value)||180000,
+    rooms:parseFloat(document.getElementById('cr-rooms')?.value)||2,
+    size:parseFloat(document.getElementById('cr-size')?.value)||45,
+    zona:norm(document.getElementById('cr-zona')?.value||'').trim(),
+    mustItems:(document.getElementById('cr-must')?.value||'').split(/[,\n]+/).map(x=>x.trim()).filter(Boolean)
+  };
+}
+
+function compatScore(d){
+  const {budget,rooms,size,zona,mustItems}=getCriterioInputs();
+  let s=0;
+  if(d.price&&d.price<=budget)s+=25;else if(d.price&&d.price<=budget*1.1)s+=12;
+  if(d.rooms&&d.rooms>=rooms)s+=20;
+  if((d.m2t||d.m2c||0)>=size)s+=20;
+  if(zona){const h=norm(d.addr+' '+d.name);if(h.includes(zona))s+=20;}
+  else s+=20;
+  if(mustItems.length){
+    const haystack=d.tags+' '+d.pros+' '+d.notes+' '+d.name+' '+d.luz+' '+d.orient;
+    const matched=mustItems.filter(item=>matchesTerm(haystack,item)).length;
+    s+=Math.round((matched/mustItems.length)*15);
+  } else s+=15;
+  return Math.min(s,100);
+}
+
+function compatDetails(d){
+  const {budget,rooms,size,zona,mustItems}=getCriterioInputs();
+  const addrH=norm(d.addr+' '+d.name);
+  const mustH=d.tags+' '+d.pros+' '+d.notes+' '+d.name+' '+d.luz+' '+d.orient;
+  const checks=[];
+  checks.push({ok:!!(d.price&&d.price<=budget),lbl:'Precio: USD '+(d.price?.toLocaleString()||'?')+' ≤ '+budget.toLocaleString()});
+  checks.push({ok:!!(d.rooms&&d.rooms>=rooms),lbl:(d.rooms||'?')+' amb. (mín '+rooms+')'});
+  checks.push({ok:!!((d.m2t||d.m2c)&&(d.m2t||d.m2c||0)>=size),lbl:(d.m2t||d.m2c||'?')+' m² (mín '+size+')'});
+  if(zona)checks.push({ok:addrH.includes(zona),lbl:'Zona: '+(document.getElementById('cr-zona')?.value||zona)});
+  mustItems.forEach(item=>{
+    const ok=matchesTerm(mustH,item);
+    const syns=getSinonimos(item);
+    const hint=syns.length>1&&!norm(mustH).includes(norm(item))?' (≈'+syns.find(s=>norm(mustH).includes(norm(s)))+')':'';
+    checks.push({ok,lbl:item+(ok?hint:'')});
+  });
+  return checks;
+}
+
+function renderDeptos(){
+  const grid=document.getElementById('deptos-grid');
+  const q=(document.getElementById('search-q')?.value||'').toLowerCase();
+  const sort=document.getElementById('sort-sel')?.value||'fecha';
+  const priceMin=parseFloat(document.getElementById('filter-price-min')?.value)||0;
+  const priceMax=parseFloat(document.getElementById('filter-price-max')?.value)||Infinity;
+  const m2Min=parseFloat(document.getElementById('filter-m2-min')?.value)||0;
+  let list=deptos.filter(d=>{
+    if(filterSt!=='todos'&&d.status!==filterSt)return false;
+    if(q&&!d.name.toLowerCase().includes(q)&&!(d.addr||'').toLowerCase().includes(q))return false;
+    if(priceMin&&d.price&&d.price<priceMin)return false;
+    if(priceMax<Infinity&&d.price&&d.price>priceMax)return false;
+    if(m2Min&&(d.m2t||d.m2c)&&(d.m2t||d.m2c)<m2Min)return false;
+    return true;
+  });
+  list.sort((a,b)=>{
+    if(sort==='precio_asc')return(a.price||0)-(b.price||0);
+    if(sort==='precio_desc')return(b.price||0)-(a.price||0);
+    if(sort==='ppm2_asc')return(ppm2(a)||999999)-(ppm2(b)||999999);
+    if(sort==='ppm2_desc')return(ppm2(b)||0)-(ppm2(a)||0);
+    if(sort==='stars')return(b.stars||0)-(a.stars||0);
+    if(sort==='compat')return compatScore(b)-compatScore(a);
+    if(sort==='manual'){
+      // manual order preserved as-is from deptos array
+    }
+    return 0;
+  });
+  grid.innerHTML=list.length?list.map(cardHtml).join(''):`<div class="empty"><i class="ti ti-building-estate"></i><p>No hay departamentos todavía. ¡Agregá el primero!</p></div>`;
+  // Init drag-and-drop when sort=manual
+  if(sort==='manual'&&typeof Sortable!=='undefined'){
+    Sortable.create(grid,{
+      animation:150,ghostClass:'sortable-ghost',dragClass:'sortable-drag',
+      onEnd:function(evt){
+        // reorder deptos array based on rendered order
+        const ids=[...grid.querySelectorAll('.dcard')].map(el=>{
+          const m=el.getAttribute('onclick').match(/'([^']+)'/);
+          return m?m[1]:null;
+        }).filter(Boolean);
+        const ordered=ids.map(id=>deptos.find(d=>d.id===id)).filter(Boolean);
+        const rest=deptos.filter(d=>!ids.includes(d.id));
+        deptos=[...ordered,...rest];
+        save();
+      }
+    });
+  }
+}
+
+function renderResumen(){
+  const tot=deptos.length,favs=deptos.filter(d=>d.status==='favorito').length;
+  const upv=visits.filter(v=>v.date>=today()).length;
+  const ppms=deptos.filter(d=>ppm2(d)).map(d=>ppm2(d));
+  const avg=ppms.length?Math.round(ppms.reduce((a,b)=>a+b,0)/ppms.length):null;
+  const expList=deptos.filter(d=>d.expensas&&d.status!=='descartado').map(d=>d.expensas);
+  const avgExp=expList.length?Math.round(expList.reduce((a,b)=>a+b,0)/expList.length):null;
+
+  // Visit reminder banner
+  const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
+  const tomorrowStr=`${tomorrow.getFullYear()}-${p2(tomorrow.getMonth()+1)}-${p2(tomorrow.getDate())}`;
+  const soonVisits=visits.filter(v=>v.date===today()||v.date===tomorrowStr);
+  let bannerHtml='';
+  if(soonVisits.length){
+    const sv=soonVisits[0],sd=deptos.find(x=>x.id===sv.deptoId);
+    if(sd)bannerHtml=`<div class="visit-banner" onclick="nav('visitas')">
+      <i class="ti ti-alarm"></i>
+      <div><div class="vb-text">${sv.date===today()?'Hoy':'Mañana'}: visita a ${sd.name}</div><div class="vb-sub">${sv.time?'a las '+sv.time:''} · ${sd.addr}</div></div>
+      <i class="ti ti-chevron-right" style="margin-left:auto;font-size:13px;color:var(--text3)"></i>
+    </div>`;
+  }
+
+  document.getElementById('stats-row').innerHTML=`
+    <div class="stat"><div class="lbl">Total cargados</div><div class="val">${tot}</div><div class="sub">departamentos</div></div>
+    <div class="stat"><div class="lbl">Favoritos</div><div class="val" style="color:var(--accent)">${favs}</div><div class="sub">destacados</div></div>
+    <div class="stat"><div class="lbl">Visitas próximas</div><div class="val" style="color:var(--green)">${upv}</div><div class="sub">agendadas</div></div>
+    <div class="stat"><div class="lbl">Promedio USD/m²</div><div class="val">${avg?'$'+avg.toLocaleString():'—'}</div><div class="sub">${avgExp?'exp. prom. $'+avgExp.toLocaleString():'entre tus deptos'}</div></div>
+  `;
+
+  if(bannerHtml){
+    let banner=document.getElementById('visit-reminder-banner');
+    if(!banner){banner=document.createElement('div');banner.id='visit-reminder-banner';document.getElementById('stats-row').before(banner);}
+    banner.innerHTML=bannerHtml;
+  } else {
+    const old=document.getElementById('visit-reminder-banner');if(old)old.remove();
+  }
+
+  const pv=document.getElementById('prox-visitas');
+  const upvList=visits.filter(v=>v.date>=today()).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,4);
+  pv.innerHTML=upvList.length?`<div class="visit-list">${upvList.map(v=>{const d=deptos.find(x=>x.id===v.deptoId);return d?`<div class="vi"><div><div class="vi-name">${d.name}</div><div class="vi-addr">${d.addr}</div><div class="vi-dt"><i class="ti ti-calendar"></i>${fmtDate(v.date)}${v.time?' a las '+v.time:''}</div></div><span class="badge ${SC[d.status]}">${SL[d.status]}</span></div>`:''}).join('')}</div>`:`<div class="empty" style="padding:1.5rem"><i class="ti ti-calendar-x"></i><p>Sin visitas próximas</p></div>`;
+  const top=document.getElementById('top-deptos');
+  const sorted=[...deptos].filter(d=>d.status!=='descartado').sort((a,b)=>(b.stars||0)-(a.stars||0)).slice(0,4);
+  top.innerHTML=sorted.length?`<div class="visit-list">${sorted.map(d=>{const pp=ppm2(d);return`<div class="vi" style="cursor:pointer" onclick="openDetail('${d.id}')"><div><div class="vi-name">${d.name}</div><div class="vi-addr">${d.addr}${pp?` · USD ${pp.toLocaleString()}/m²`:''}</div></div><div class="stars">${[1,2,3,4,5].map(i=>`<span class="star${i<=(d.stars||0)?' on':''}">★</span>`).join('')}</div></div>`}).join('')}</div>`:`<div class="empty" style="padding:1.5rem"><i class="ti ti-star"></i><p>Sin deptos puntuados</p></div>`;
+
+  // Price/m2 scatter chart
+  renderPriceChart();
+}
+
+let _priceChart=null;
+function renderPriceChart(){
+  const el=document.getElementById('price-chart-canvas');
+  if(!el)return;
+  const data=deptos.filter(d=>d.price&&(d.m2t||d.m2c)&&d.status!=='descartado');
+  if(data.length<2){document.getElementById('price-chart-wrap').style.display='none';return;}
+  document.getElementById('price-chart-wrap').style.display='block';
+  const chartData={
+    datasets:[{
+      label:'Precio vs m²',
+      data:data.map(d=>({x:d.m2t||d.m2c,y:d.price,label:d.name})),
+      backgroundColor:data.map(d=>{
+        const colors={interesado:'#534AB7',visita:'#1D9E75',visitado:'#38bdf8',favorito:'#EF9F27',negociacion:'#fbbf24',descartado:'#A32D2D'};
+        return(colors[d.status]||'#534AB7')+'cc';
+      }),
+      pointRadius:7,pointHoverRadius:9
+    }]
+  };
+  if(_priceChart)_priceChart.destroy();
+  _priceChart=new Chart(el,{
+    type:'scatter',data:chartData,
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:p=>`${p.raw.label}: USD ${p.raw.y.toLocaleString()} · ${p.raw.x} m²`}}
+      },
+      scales:{
+        x:{title:{display:true,text:'Superficie (m²)',color:'#666'},ticks:{color:'#666'},grid:{color:'#2e2e2e'}},
+        y:{title:{display:true,text:'Precio (USD)',color:'#666'},ticks:{color:'#666',callback:v=>'$'+v.toLocaleString()},grid:{color:'#2e2e2e'}}
+      }
+    }
+  });
+}
+
+function renderVisitas(){
+  const list=document.getElementById('all-visits');
+  const sorted=[...visits].sort((a,b)=>a.date.localeCompare(b.date));
+  list.innerHTML=sorted.length?sorted.map(v=>{
+    const d=deptos.find(x=>x.id===v.deptoId);if(!d)return'';
+    const past=v.date<today();
+    return`<div class="vi"><div><div class="vi-name">${d.name}</div><div class="vi-addr">${d.addr}</div><div class="vi-dt"><i class="ti ti-calendar"></i>${fmtDate(v.date)}${v.time?' a las '+v.time:''}${past?' · <span style="color:var(--red-text);font-size:10px">Pasada</span>':''}</div>${v.notes?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${v.notes}</div>`:''}</div><button class="ibt" onclick="delVisit('${v.id}')"><i class="ti ti-trash"></i></button></div>`;
+  }).join(''):`<div class="empty"><i class="ti ti-calendar-x"></i><p>Sin visitas agendadas</p></div>`;
+  renderCal();
+}
+
+function renderCal(){
+  document.getElementById('cal-head').innerHTML=['Lu','Ma','Mi','Ju','Vi','Sá','Do'].map(d=>`<div class="cal-h">${d}</div>`).join('');
+  const y=calDate.getFullYear(),m=calDate.getMonth();
+  const first=new Date(y,m,1).getDay(),off=(first+6)%7,total=new Date(y,m+1,0).getDate();
+  document.getElementById('cal-title').textContent=new Intl.DateTimeFormat('es-AR',{month:'long',year:'numeric'}).format(calDate);
+  let html='';
+  for(let i=0;i<off;i++)html+=`<div class="cd empty"></div>`;
+  for(let d=1;d<=total;d++){
+    const ds=`${y}-${p2(m+1)}-${p2(d)}`,it=ds===today();
+    const dvs=visits.filter(v=>v.date===ds);
+    html+=`<div class="cd${it?' today':''}"><div class="dn">${d}</div>${dvs.map(v=>{const dep=deptos.find(x=>x.id===v.deptoId);return dep?`<div class="cev" title="${esc(dep.name)}">${esc(v.time)} ${esc(dep.name)}</div>`:''}).join('')}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML=html;
+}
+function changeCalMonth(delta){
+  calDate=new Date(calDate.getFullYear(),calDate.getMonth()+delta,1);
+  renderCal();
+}
+
+function delVisit(id){if(!confirm('¿Eliminar visita?'))return;visits=visits.filter(v=>v.id!==id);save();renderVisitas()}
+
+function renderComparar(){
+  document.getElementById('cmp-sel').innerHTML=deptos.map(d=>{
+    const on=cmpSel.includes(d.id);
+    return`<button onclick="toggleCmp('${d.id}')" style="padding:5px 12px;border:1px solid ${on?'var(--accent)':'var(--border)'};border-radius:20px;font-size:12px;cursor:pointer;background:${on?'var(--accent)':'var(--bg2)'};color:${on?'#fff':'var(--text2)'};font-family:inherit">${d.name}</button>`;
+  }).join('');
+  const wrap=document.getElementById('cmp-table');
+  const aiWrap=document.getElementById('cmp-ai-wrap');
+  if(cmpSel.length<2){
+    wrap.innerHTML=`<div class="empty"><i class="ti ti-scale"></i><p>Seleccioná al menos 2 departamentos</p></div>`;
+    if(aiWrap)aiWrap.style.display='none';
+    return;
+  }
+  if(aiWrap)aiWrap.style.display='block';
+  document.getElementById('cmp-ai-result').innerHTML='<span style="color:var(--text3);font-size:12px">Hacé clic en "Analizar" para obtener la opinión de la IA sobre estos departamentos.</span>';
+  const list=deptos.filter(d=>cmpSel.includes(d.id));
+  const rows=[
+    {l:'Precio USD',fn:d=>d.price?'USD '+d.price.toLocaleString():'—'},
+    {l:'USD / m²',fn:d=>{const p=ppm2(d);return p?'USD '+p.toLocaleString():'—'}},
+    {l:'Expensas ARS',fn:d=>d.expensas?'$'+d.expensas.toLocaleString():'—'},
+    {l:'Ambientes',fn:d=>d.rooms||'—'},{l:'Dormitorios',fn:d=>d.beds||'—'},{l:'Baños',fn:d=>d.baths||'—'},
+    {l:'m² cubiertos',fn:d=>d.m2c?d.m2c+' m²':'—'},{l:'m² totales',fn:d=>d.m2t?d.m2t+' m²':'—'},
+    {l:'Piso',fn:d=>d.floor||'—'},{l:'Antigüedad',fn:d=>d.age||'—'},
+    {l:'Orientación',fn:d=>d.orient||'—'},{l:'Luminosidad',fn:d=>d.luz||'—'},
+    {l:'Estado',fn:d=>SL[d.status]||'—'},
+    {l:'Puntuación',fn:d=>d.stars?'★'.repeat(d.stars)+'☆'.repeat(5-d.stars):'—'},
+    {l:'Pros',fn:d=>d.pros||'—'},{l:'Contras',fn:d=>d.cons||'—'},
+  ];
+  const colW=Math.floor(80/list.length);
+  wrap.innerHTML=`<div style="overflow-x:auto"><table class="cmp-table"><thead><tr><th style="width:120px"></th>${list.map(d=>`<th style="width:${colW}%">${d.name}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr><td>${r.l}</td>${list.map(d=>`<td>${r.fn(d)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+
+function toggleCmp(id){
+  if(cmpSel.includes(id))cmpSel=cmpSel.filter(x=>x!==id);
+  else if(cmpSel.length<3)cmpSel.push(id);
+  renderComparar();
+}
+
+async function askCmpAI(){
+  const btn=document.getElementById('cmp-ai-btn');
+  const res=document.getElementById('cmp-ai-result');
+  const list=deptos.filter(d=>cmpSel.includes(d.id));
+  if(!list.length)return;
+  const key=getKey();
+  if(!key){res.innerHTML=`<span style="color:var(--red-text)"><i class="ti ti-alert-circle" style="font-size:13px"></i> Configurá tu Groq API Key en Ajustes primero</span>`;return;}
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Analizando...';
+  res.innerHTML='<span style="color:var(--text3);font-size:12px"><span class="spin"></span> Consultando a la IA...</span>';
+  const deptosSummary=list.map((d,i)=>{
+    const pp=ppm2(d);
+    return `Depto ${i+1}: ${d.name}
+- Precio: USD ${d.price||'?'}${pp?`, USD ${pp}/m²`:''}
+- Expensas: ${d.expensas?'$'+d.expensas+' ARS':'no informadas'}
+- Superficie: ${d.m2t||d.m2c||'?'} m² totales
+- Ambientes: ${d.rooms||'?'}, Piso: ${d.floor||'?'}, Antigüedad: ${d.age||'?'} años
+- Orientación: ${d.orient||'?'}, Luminosidad: ${d.luz||'?'}
+- Estado: ${SL[d.status]||d.status}, Puntuación personal: ${d.stars||0}/5
+- Pros: ${d.pros||'ninguno'}
+- Contras: ${d.cons||'ninguno'}
+- Tags: ${d.tags||'—'}`;
+  }).join('\n\n');
+  const prompt=`Sos un experto en el mercado inmobiliario de Buenos Aires. Analizá estos ${list.length} departamentos y dá una opinión comparativa clara y directa. Considerá precio, relación precio/m², ubicación, características y la puntuación personal del usuario.\n\n${deptosSummary}\n\nDá una conclusión de cuál te parece la mejor opción y por qué, y señalá los puntos fuertes y débiles de cada uno. Respondé en español, de forma concisa pero completa (máx. 300 palabras). Usá emojis para hacerlo más legible.`;
+  try{
+    const resp=await fetch(GROQ_ENDPOINT,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+      body:JSON.stringify({model:GROQ_TEXT_MODEL,messages:[{role:'user',content:prompt}],temperature:0.5,max_tokens:600})
+    });
+    if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
+    const data=await resp.json();
+    const text=data?.choices?.[0]?.message?.content||'Sin respuesta';
+    res.innerHTML=nl2br(text);
+  }catch(e){
+    res.innerHTML=`<span style="color:var(--red-text)"><i class="ti ti-alert-circle"></i> Error: ${esc(e.message)}</span>`;
+  }
+  btn.disabled=false;btn.innerHTML='<i class="ti ti-wand"></i>Analizar';
+}
+
+async function analyzeDeptoAI(id){
+  const d=deptos.find(x=>x.id===id);if(!d)return;
+  const key=getKey();
+  const btn=document.querySelector(`#det-ai-section-${id} .btn-ai-depto`);
+  const res=document.getElementById(`det-ai-result-${id}`);
+  if(!res)return;
+  if(!key){res.style.display='block';res.innerHTML=`<span style="color:var(--red-text)"><i class="ti ti-alert-circle" style="font-size:13px"></i> Configurá tu Groq API Key en Ajustes primero</span>`;return;}
+  if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span> Analizando...';}
+  res.style.display='block';res.innerHTML='<span class="spin"></span> Consultando a la IA...';
+  const pp=ppm2(d);
+  const crit=getCriterioInputs();
+  const prompt=`Sos un experto en el mercado inmobiliario de Buenos Aires. Analizá este departamento de forma breve y directa.\n\n**${d.name}**\n- Dirección: ${d.addr||'?'}\n- Precio: USD ${d.price||'?'}${pp?`, USD ${pp}/m²`:''}\n- Expensas: ${d.expensas?'$'+d.expensas+' ARS':'no informadas'}\n- Superficie: ${d.m2t||d.m2c||'?'} m²\n- Ambientes: ${d.rooms||'?'}, Dormitorios: ${d.beds||'?'}, Baños: ${d.baths||'?'}\n- Piso: ${d.floor||'?'}, Antigüedad: ${d.age||'?'}\n- Orientación: ${d.orient||'?'}, Luminosidad: ${d.luz||'?'}\n- Pros: ${d.pros||'ninguno'}\n- Contras: ${d.cons||'ninguno'}\n- Tags: ${d.tags||'—'}\n\n**Criterios del usuario:** Presupuesto USD ${crit.budget.toLocaleString()}, mín. ${crit.rooms} amb., mín. ${crit.size} m²${crit.zona?', zona: '+crit.zona:''}${crit.mustItems.length?', imprescindibles: '+crit.mustItems.join(', '):''}\n\nDá una opinión concisa (máx. 200 palabras): ¿vale la pena este depto? ¿Precio justo para la zona? ¿Qué verificar antes de avanzar? Usá emojis para claridad. Respondé en español.`;
+  try{
+    const resp=await fetch(GROQ_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},body:JSON.stringify({model:GROQ_TEXT_MODEL,messages:[{role:'user',content:prompt}],temperature:0.5,max_tokens:400})});
+    if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
+    const data=await resp.json();
+    const text=data?.choices?.[0]?.message?.content||'Sin respuesta';
+    res.innerHTML=nl2br(text);
+    addLog(id,'🤖 Análisis IA realizado');
+  }catch(e){
+    res.innerHTML=`<span style="color:var(--red-text)"><i class="ti ti-alert-circle"></i> Error: ${esc(e.message)}</span>`;
+  }
+  if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-wand"></i> Analizar de nuevo';}
+}
+
+function saveCriterios(){
+  try{
+    localStorage.setItem('ds-criterios',JSON.stringify({
+      budget:document.getElementById('cr-budget')?.value||'180000',
+      rooms:document.getElementById('cr-rooms')?.value||'2',
+      size:document.getElementById('cr-size')?.value||'45',
+      zona:document.getElementById('cr-zona')?.value||'',
+      must:document.getElementById('cr-must')?.value||''
+    }));
+  }catch(e){}
+}
+
+function loadCriterios(){
+  try{
+    const c=JSON.parse(localStorage.getItem('ds-criterios')||'{}');
+    if(c.budget){const el=document.getElementById('cr-budget');if(el)el.value=c.budget;}
+    if(c.rooms){const el=document.getElementById('cr-rooms');if(el)el.value=c.rooms;}
+    if(c.size){const el=document.getElementById('cr-size');if(el)el.value=c.size;}
+    if(c.zona!=null){const el=document.getElementById('cr-zona');if(el)el.value=c.zona;}
+    if(c.must!=null){const el=document.getElementById('cr-must');if(el)el.value=c.must;}
+  }catch(e){}
+}
+
+function renderCriterios(){
+  const list=document.getElementById('compat-list');
+  const scored=deptos.filter(d=>d.status!=='descartado').map(d=>({...d,score:compatScore(d),checks:compatDetails(d)})).sort((a,b)=>b.score-a.score);
+  list.innerHTML=scored.length?scored.map(d=>{
+    const pp=ppm2(d);
+    const checksHtml=d.checks.map(c=>`<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${c.ok?'var(--green-bg)':'var(--red-bg)'};color:${c.ok?'var(--green-text)':'var(--red-text)'};display:inline-flex;align-items:center;gap:3px"><i class="ti ti-${c.ok?'check':'x'}" style="font-size:10px"></i>${c.lbl}</span>`).join('');
+    return`<div class="vi" style="flex-direction:column;align-items:stretch;gap:6px;cursor:pointer" onclick="openDetail('${d.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div class="vi-name">${d.name}</div><div class="vi-addr">${d.addr}${pp?` · USD ${pp.toLocaleString()}/m²`:''}</div></div>
+        <div style="font-size:17px;font-weight:600;color:var(--accent)">${d.score}%</div>
+      </div>
+      <div class="compat-bar"><div class="compat-fill" style="width:${d.score}%"></div></div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">${checksHtml}</div>
+    </div>`;
+  }).join(''):`<div class="empty"><i class="ti ti-chart-bar"></i><p>Cargá departamentos primero</p></div>`;
+}
+
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sidebar-overlay');
+  sb.classList.toggle('open');
+  ov.classList.toggle('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
+function nav(s){
+  closeSidebar();
+  SCREENS.forEach((sc,i)=>{
+    document.querySelectorAll('.nav-btn')[i].classList.remove('active');
+    const el=document.getElementById('screen-'+sc);
+    if(el)el.classList.remove('active');
+  });
+  const i=SCREENS.indexOf(s);
+  document.querySelectorAll('.nav-btn')[i].classList.add('active');
+  document.getElementById('screen-'+s).classList.add('active');
+  // Toggle scroll wrapper: map lives outside it
+  const scrollWrap=document.querySelector('.main-scroll');
+  if(scrollWrap)scrollWrap.style.display=s==='mapa'?'none':'flex';
+  document.getElementById('page-title').textContent={resumen:'Resumen',deptos:'Departamentos',mapa:'Mapa',visitas:'Visitas',comparar:'Comparar deptos',criterios:'Mis criterios',ajustes:'Ajustes'}[s];
+  const tb=document.getElementById('topbar-btns');
+  tb.innerHTML=(s==='resumen'||s==='deptos'||s==='visitas'||s==='mapa')?`<button class="btn btn-primary" onclick="openAddModal()"><i class="ti ti-plus"></i>Agregar depto</button>`:'';
+  renderScreen(s);
+  if(s==='mapa')initMap();
+}
+
+function curScreen(){return SCREENS.find(s=>document.getElementById('screen-'+s).classList.contains('active'))||'resumen'}
+function renderScreen(s){
+  if(s==='resumen')renderResumen();
+  else if(s==='deptos')renderDeptos();
+  else if(s==='mapa')renderMapList();
+  else if(s==='visitas')renderVisitas();
+  else if(s==='comparar')renderComparar();
+  else if(s==='criterios')renderCriterios();
+}
+
+function openM(id){
+  const wrap=document.getElementById(id);if(!wrap)return;
+  lastFocusedElement=document.activeElement;
+  wrap.classList.add('open');wrap.setAttribute('aria-hidden','false');
+  const modal=wrap.querySelector('.modal');
+  requestAnimationFrame(()=>modal?.focus());
+}
+function closeM(id){
+  const wrap=document.getElementById(id);if(!wrap)return;
+  wrap.classList.remove('open');wrap.setAttribute('aria-hidden','true');
+  if(lastFocusedElement&&document.contains(lastFocusedElement))lastFocusedElement.focus();
+}
+document.querySelectorAll('.modal-wrap').forEach(m=>{
+  m.addEventListener('click',function(e){if(e.target===this)closeM(this.id)});
+  m.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){closeM(this.id);return;}
+    if(e.key!=='Tab')return;
+    const focusable=[...this.querySelectorAll('button,input,select,textarea,a[href],[tabindex]:not([tabindex="-1"])')].filter(el=>!el.disabled&&el.offsetParent!==null);
+    if(!focusable.length)return;
+    const first=focusable[0],last=focusable[focusable.length-1];
+    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+  });
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    const open=document.querySelector('.modal-wrap.open');
+    if(open)closeM(open.id);else closeSidebar();
+  }
+});
+
+// ---- MAP ----
+let leafletMap=null, mapMarkers=[], mapFilterSt='todos', mapActiveId=null;
+let poiMarkers=[], pois=[], zones=[], zoneCircles=[], heatLayer=null, heatmapOn=false;
+let poiClickMode=false, zoneClickMode=false;
+let selectedZoneColor='#534AB7';
+const GEO_CACHE_KEY='ds-geocache';
+const POI_KEY='ds-pois', ZONE_KEY='ds-zones';
+const MAP_COLORS={interesado:'#534AB7',visita:'#1D9E75',visitado:'#38bdf8',favorito:'#EF9F27',negociacion:'#fbbf24',descartado:'#A32D2D'};
+const MAP_ICONS={};
+const POI_TYPE_LABELS={trabajo:'💼 Trabajo',casa:'🏠 Casa actual',gym:'🏋️ Gimnasio',familia:'👨‍👩‍👧 Familia',otro:'📍 Otro'};
+const POI_COLORS={trabajo:'#EF9F27',casa:'#1D9E75',gym:'#e05d5d',familia:'#38bdf8',otro:'#aaa'};
+let markerClusterGroup=null;
+
+function getMapColors(s){return MAP_COLORS[s]||'#534AB7';}
+
+function makePinSVG(c,w,h,stroke='rgba(0,0,0,.35)',sw=1.5){
+  return`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <path d="M${w/2} 0C${w*.224} 0 0 ${w*.224} 0 ${w*.5}c0 ${h*.431} ${w/2} ${h*.611} ${w/2} ${h*.611}S${w} ${h*.931+h*.069} ${w} ${w*.5}C${w} ${w*.224} ${w*.776} 0 ${w/2} 0z" fill="${c}" stroke="${stroke}" stroke-width="${sw}"/>
+    <circle cx="${w/2}" cy="${w/2}" r="${w*.214}" fill="white" fill-opacity="0.9"/>
+  </svg>`;
+}
+
+function makeIcon(status){
+  if(MAP_ICONS[status])return MAP_ICONS[status];
+  const c=getMapColors(status);
+  MAP_ICONS[status]=L.divIcon({html:`<div style="filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))">${makePinSVG(c,28,36)}</div>`,className:'',iconSize:[28,36],iconAnchor:[14,36],popupAnchor:[0,-38]});
+  return MAP_ICONS[status];
+}
+function makeActiveIcon(status){
+  const c=getMapColors(status);
+  return L.divIcon({html:`<div style="filter:drop-shadow(0 3px 8px rgba(0,0,0,.5))">${makePinSVG(c,36,46,'white',2.5)}</div>`,className:'',iconSize:[36,46],iconAnchor:[18,46],popupAnchor:[0,-48]});
+}
+function makePoiIcon(type){
+  const c=POI_COLORS[type]||'#aaa';
+  const emoji={trabajo:'💼',casa:'🏠',gym:'🏋',familia:'👨‍👩‍👧',otro:'📍'}[type]||'📍';
+  return L.divIcon({
+    html:`<div style="width:32px;height:32px;background:${c};border-radius:50%;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:14px;filter:drop-shadow(0 2px 5px rgba(0,0,0,.5));line-height:1">${emoji}</div>`,
+    className:'',iconSize:[32,32],iconAnchor:[16,16],popupAnchor:[0,-18]
+  });
+}
+
+function loadGeoCache(){try{return JSON.parse(localStorage.getItem(GEO_CACHE_KEY)||'{}');}catch(e){return{};}}
+function saveGeoCache(c){try{localStorage.setItem(GEO_CACHE_KEY,JSON.stringify(c));}catch(e){}}
+function loadPois(){try{return JSON.parse(localStorage.getItem(POI_KEY)||'[]');}catch(e){return[];}}
+function savePois(){try{localStorage.setItem(POI_KEY,JSON.stringify(pois));}catch(e){}}
+function loadZones(){try{return JSON.parse(localStorage.getItem(ZONE_KEY)||'[]');}catch(e){return[];}}
+function saveZones(){try{localStorage.setItem(ZONE_KEY,JSON.stringify(zones));}catch(e){}}
+
+async function geocodeAddr(addr){
+  if(!addr)return null;
+  const cache=loadGeoCache();
+  if(cache[addr])return cache[addr];
+  try{
+    const q=encodeURIComponent(addr+', Argentina');
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}&limit=1&countrycodes=ar`,{headers:{'Accept-Language':'es'}});
+    const data=await r.json();
+    if(data&&data.length){
+      const coords={lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)};
+      cache[addr]=coords;saveGeoCache(cache);return coords;
+    }
+  }catch(e){}
+  return null;
+}
+
+// Haversine — distancia real entre dos coords en km
+function haversineKm(lat1,lng1,lat2,lng2){
+  const R=6371;
+  const dLat=(lat2-lat1)*Math.PI/180;
+  const dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)*Math.sin(dLat/2)+
+    Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*
+    Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+// Tiempo a pie real: 5 km/h promedio, +20% por calles no lineales
+function walkMinutes(distKm){
+  return Math.round(distKm*1.2/5*60);
+}
+
+function initMap(){
+  pois=loadPois();zones=loadZones();
+  if(leafletMap){
+    leafletMap.invalidateSize();
+    renderMapMarkers();renderMapList();renderPoiMarkers();renderPoiList();renderZoneList();renderZoneCircles();
+    return;
+  }
+  leafletMap=L.map('map-container',{zoomControl:true}).setView([-34.603722,-58.381592],13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+    attribution:'&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains:'abcd',maxZoom:19
+  }).addTo(leafletMap);
+
+  // Map click handler (POI or Zone mode)
+  leafletMap.on('click',function(e){
+    if(poiClickMode){
+      const name=document.getElementById('poi-name-input').value.trim()||'Lugar sin nombre';
+      const type=document.getElementById('poi-type-input').value;
+      addPoi({name,type,lat:e.latlng.lat,lng:e.latlng.lng,addr:'(marcado en mapa)'});
+      poiClickMode=false;
+      document.getElementById('poi-click-btn').classList.remove('btn-danger');
+      leafletMap.getContainer().style.cursor='';
+    } else if(zoneClickMode){
+      const name=document.getElementById('zone-name-input').value.trim()||'Zona favorita';
+      const radius=parseInt(document.getElementById('zone-radius-input').value)||500;
+      const color=selectedZoneColor;
+      addZone({name,lat:e.latlng.lat,lng:e.latlng.lng,radius,color,addr:'(marcado en mapa)'});
+      zoneClickMode=false;
+      document.getElementById('zone-click-btn').classList.remove('btn-danger');
+      leafletMap.getContainer().style.cursor='';
+    }
+  });
+
+  // Zone radius slider live update
+  const ri=document.getElementById('zone-radius-input');
+  if(ri)ri.oninput=function(){document.getElementById('zone-radius-val').textContent=this.value+'m';};
+
+  // Zone color picker
+  document.querySelectorAll('.zone-color-opt').forEach(el=>{
+    el.onclick=function(){
+      document.querySelectorAll('.zone-color-opt').forEach(x=>x.style.border='2px solid transparent');
+      this.style.border='2px solid white';
+      selectedZoneColor=this.dataset.color;
+    };
+  });
+
+  document.getElementById('map-toolbar').style.display='flex';
+  // Init marker cluster group
+  if(typeof L.markerClusterGroup!=='undefined'){
+    markerClusterGroup=L.markerClusterGroup({maxClusterRadius:50,showCoverageOnHover:false});
+    leafletMap.addLayer(markerClusterGroup);
+  }
+  renderMapMarkers();renderPoiMarkers();renderPoiList();renderZoneList();renderZoneCircles();
+  renderMapList();
+}
+
+// ---- DEPTOS ----
+function filteredMapDeptos(){
+  if(mapFilterSt==='todos')return deptos;
+  return deptos.filter(d=>d.status===mapFilterSt);
+}
+
+async function renderMapMarkers(){
+  mapMarkers.forEach(m=>leafletMap.removeLayer(m.marker));
+  if(markerClusterGroup)markerClusterGroup.clearLayers();
+  mapMarkers=[];
+  const list=filteredMapDeptos();
+  if(!list.length)return;
+  const cache=loadGeoCache();
+  const toGeocode=[];
+  for(const d of list){
+    if(d.addr&&cache[d.addr])addMarker(d,cache[d.addr]);
+    else if(d.addr)toGeocode.push(d);
+  }
+  fitMapBounds();
+  if(toGeocode.length){
+    const statusEl=document.getElementById('map-geo-status');
+    const textEl=document.getElementById('map-geo-text');
+    statusEl.classList.add('show');
+    for(let i=0;i<toGeocode.length;i++){
+      const d=toGeocode[i];
+      textEl.textContent=`Geocodificando ${i+1}/${toGeocode.length}: ${d.name}`;
+      const coords=await geocodeAddr(d.addr);
+      if(coords){addMarker(d,coords);fitMapBounds();}
+      renderMapList();
+      if(i<toGeocode.length-1)await new Promise(r=>setTimeout(r,1100));
+    }
+    statusEl.classList.remove('show');
+    renderMapList();
+    if(heatmapOn)updateHeatmap();
+  }
+}
+
+function addMarker(d,coords){
+  const marker=L.marker([coords.lat,coords.lng],{icon:makeIcon(d.status)});
+  const pp=ppm2(d);
+  const photo=d.photos&&d.photos.length?safeUrl(d.photos[0]):null;
+  const statusColors={interesado:'background:#1e1a3f;color:#a5a0ff',visita:'background:#0d2018;color:#4ade9e',visitado:'background:#0a1f2e;color:#38bdf8',favorito:'background:#1f1500;color:#f59e0b',negociacion:'background:#1a1200;color:#fbbf24',descartado:'background:#2a0a0a;color:#f87171'};
+  const sbg=statusColors[d.status]||statusColors.interesado;
+  const SL2={interesado:'Interesado',visita:'Con visita',visitado:'Visitado',favorito:'Favorito',negociacion:'Negociando',descartado:'Descartado'};
+  const mapsUrl=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.addr||d.name)}`;
+
+  marker.bindPopup(`
+    <div class="map-popup">
+      ${photo
+        ?`<img class="map-popup-img" src="${esc(photo)}" onerror="this.style.display='none';this.nextSibling.style.display='flex'"><div class="map-popup-img-placeholder" style="display:none"><i class="ti ti-photo" style="font-size:20px"></i></div>`
+        :`<div class="map-popup-img-placeholder"><i class="ti ti-photo" style="font-size:20px"></i></div>`}
+      <div class="map-popup-body">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px;margin-bottom:3px">
+          <div class="map-popup-name">${esc(d.name)}</div>
+          <span style="font-size:10px;padding:2px 7px;border-radius:5px;font-weight:600;flex-shrink:0;${sbg}">${SL2[d.status]||d.status}</span>
+        </div>
+        <div class="map-popup-addr"><i class="ti ti-map-pin" style="font-size:10px"></i> ${esc(d.addr||'—')}</div>
+        <div class="map-popup-price">USD ${d.price?d.price.toLocaleString():'—'}${pp?`<span style="font-size:11px;color:#666;font-weight:400"> · ${pp.toLocaleString()}/m²</span>`:''}</div>
+        <div class="map-popup-actions">
+          <button class="map-popup-btn" onclick="openDetail('${d.id}');leafletMap.closePopup()"><i class="ti ti-eye" style="font-size:13px"></i> Ver depto</button>
+          <a class="map-popup-btn-sec" href="${esc(mapsUrl)}" target="_blank" rel="noopener noreferrer" title="Abrir en Google Maps"><i class="ti ti-map" style="font-size:13px"></i> Maps</a>
+        </div>
+      </div>
+    </div>
+  `,{maxWidth:250,className:'ds-popup'});
+  marker.on('click',()=>setMapActive(d.id,false));
+  if(markerClusterGroup){markerClusterGroup.addLayer(marker);}
+  else{marker.addTo(leafletMap);}
+  mapMarkers.push({id:d.id,marker,coords,status:d.status});
+}
+
+function fitMapBounds(){
+  if(!mapMarkers.length)return;
+  const bounds=L.latLngBounds(mapMarkers.map(m=>[m.coords.lat,m.coords.lng]));
+  leafletMap.fitBounds(bounds,{padding:[40,40],maxZoom:15});
+}
+
+function setMapActive(id,flyTo=true){
+  mapActiveId=id;
+  mapMarkers.forEach(m=>{m.marker.setIcon(m.id===id?makeActiveIcon(m.status):makeIcon(m.status));});
+  document.querySelectorAll('.map-list-item').forEach(el=>{el.classList.toggle('active',el.dataset.id===id);});
+  const el=document.querySelector(`.map-list-item[data-id="${id}"]`);
+  if(el)el.scrollIntoView({block:'nearest',behavior:'smooth'});
+  if(flyTo){
+    const m=mapMarkers.find(x=>x.id===id);
+    if(m){leafletMap.flyTo([m.coords.lat,m.coords.lng],16,{duration:.8});setTimeout(()=>m.marker.openPopup(),900);}
+  }
+}
+
+function renderMapList(){
+  const q=(document.getElementById('map-search')?.value||'').toLowerCase();
+  const list=filteredMapDeptos().filter(d=>!q||d.name.toLowerCase().includes(q)||(d.addr||'').toLowerCase().includes(q));
+  const cache=loadGeoCache();
+  const html=list.map(d=>{
+    const pp=ppm2(d);
+    const hasCoords=d.addr&&cache[d.addr];
+    const color=getMapColors(d.status);
+    const photo=d.photos&&d.photos.length?safeUrl(d.photos[0]):null;
+    return`<div class="map-list-item${mapActiveId===d.id?' active':''}" data-id="${d.id}" onclick="setMapActive('${d.id}')">
+      <div style="display:flex;align-items:center;gap:8px">
+        ${photo
+          ?`<img src="${esc(photo)}" style="width:42px;height:42px;object-fit:cover;border-radius:7px;flex-shrink:0;border:1px solid var(--border)" onerror="this.style.display='none'">`
+          :`<div style="width:42px;height:42px;border-radius:7px;background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--text3)"><i class="ti ti-photo" style="font-size:15px"></i></div>`}
+        <div style="min-width:0;flex:1">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:1px">
+            <div style="width:7px;height:7px;border-radius:50%;background:${color};flex-shrink:0"></div>
+            <div class="mli-name">${esc(d.name)}</div>
+          </div>
+          <div class="mli-addr">${esc(d.addr||'—')}</div>
+          <div class="mli-row">
+            ${d.price?`<span class="mli-price">USD ${d.price.toLocaleString()}</span>`:''}
+            ${pp?`<span class="chip" style="font-size:10px">${pp.toLocaleString()}/m²</span>`:''}
+            ${!hasCoords&&d.addr?`<span class="mli-no-geo"><i class="ti ti-map-pin-off" style="font-size:10px"></i></span>`:''}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  const el=document.getElementById('map-list');
+  if(el)el.innerHTML=html||`<div style="padding:1.5rem;text-align:center;color:var(--text3);font-size:13px">${q?'Sin resultados':'No hay deptos'}</div>`;
+}
+
+function setMapFilter(btn,st){
+  document.querySelectorAll('.mfp').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');mapFilterSt=st;mapActiveId=null;
+  if(leafletMap){mapMarkers.forEach(m=>leafletMap.removeLayer(m.marker));mapMarkers=[];renderMapMarkers();}
+  renderMapList();
+}
+
+// ---- LAYER TOGGLES ----
+let layerDeptos=true,layerPois=true;
+function toggleLayer(l){
+  if(l==='deptos'){
+    layerDeptos=!layerDeptos;
+    const btn=document.getElementById('layer-deptos-btn');
+    btn.classList.toggle('on',layerDeptos);
+    mapMarkers.forEach(m=>{if(layerDeptos)m.marker.addTo(leafletMap);else leafletMap.removeLayer(m.marker);});
+  } else if(l==='pois'){
+    layerPois=!layerPois;
+    const btn=document.getElementById('layer-pois-btn');
+    btn.classList.toggle('on',layerPois);
+    poiMarkers.forEach(m=>{if(layerPois)m.marker.addTo(leafletMap);else leafletMap.removeLayer(m.marker);});
+  }
+}
+
+// ---- SIDEBAR TABS ----
+function switchMapTab(btn,panel){
+  document.querySelectorAll('.map-tab').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.map-tab-panel').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById(panel).classList.add('on');
+  // Show filter pills only on deptos tab
+  const pills=document.getElementById('map-filter-pills');
+  if(pills)pills.style.display=(panel==='tab-deptos')?'flex':'none';
+}
+
+// ---- POIs ----
+function startPoiClick(){
+  poiClickMode=!poiClickMode;
+  zoneClickMode=false;
+  const btn=document.getElementById('poi-click-btn');
+  btn.classList.toggle('btn-danger',poiClickMode);
+  leafletMap.getContainer().style.cursor=poiClickMode?'crosshair':'';
+  if(poiClickMode)showToast('Hacé clic en el mapa para marcar el lugar');
+}
+
+function addPoi(poi){
+  if(!poi.id)poi.id=gid();
+  pois.push(poi);savePois();
+  renderPoiMarkerSingle(poi);
+  renderPoiList();
+}
+
+function renderPoiMarkers(){
+  poiMarkers.forEach(m=>leafletMap.removeLayer(m.marker));
+  poiMarkers=[];
+  pois.forEach(p=>renderPoiMarkerSingle(p));
+}
+
+function renderPoiMarkerSingle(poi){
+  const marker=L.marker([poi.lat,poi.lng],{icon:makePoiIcon(poi.type),zIndexOffset:500}).addTo(leafletMap);
+  marker.on('click',()=>openPoiPopup(poi,marker));
+  poiMarkers.push({id:poi.id,marker});
+}
+
+async function openPoiPopup(poi,marker){
+  const cache=loadGeoCache();
+
+  function gmapsTransitUrl(fLat,fLng,tLat,tLng){return`https://www.google.com/maps/dir/?api=1&origin=${fLat},${fLng}&destination=${tLat},${tLng}&travelmode=transit`;}
+  function gmapsWalkUrl(fLat,fLng,tLat,tLng){return`https://www.google.com/maps/dir/?api=1&origin=${fLat},${fLng}&destination=${tLat},${tLng}&travelmode=walking`;}
+  function moovitUrl(fLat,fLng,tLat,tLng,fName,tName){return`https://moovitapp.com/index/es-419/transporte_p%C3%BAblico-Buenos_Aires_y_Alrededores-4321?fll=${fLat}_${fLng}&tll=${tLat}_${tLng}&fn=${encodeURIComponent(fName)}&tn=${encodeURIComponent(tName)}&lang=es-419`;}
+
+  const typeLabel=POI_TYPE_LABELS[poi.type]||poi.type;
+  const poiGmaps=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(poi.addr&&poi.addr!=='(marcado en mapa)'?poi.addr:`${poi.lat},${poi.lng}`)}`;
+  const poiMoovit=`https://moovitapp.com/?lang=es-419`;
+
+  // Calc distances for all geocoded deptos using Haversine — instant, no API needed
+  const geocodedDeptos=deptos.filter(d=>d.addr&&cache[d.addr]);
+  const withDist=geocodedDeptos.map(d=>{
+    const c=cache[d.addr];
+    const distKm=haversineKm(poi.lat,poi.lng,c.lat,c.lng);
+    const mins=walkMinutes(distKm);
+    return{d,c,distKm,mins};
+  }).sort((a,b)=>a.distKm-b.distKm);
+
+  function buildRows(filterQ=''){
+    const filtered=filterQ
+      ?withDist.filter(({d})=>d.name.toLowerCase().includes(filterQ.toLowerCase()))
+      :withDist;
+    if(!filtered.length)return`<div style="padding:8px 0;font-size:11px;color:#555;text-align:center">Sin resultados</div>`;
+    return filtered.map(({d,c,distKm,mins})=>{
+      const km=distKm.toFixed(1);
+      const dot=mins<=15?'🟢':mins<=30?'🟡':'🔴';
+      const transitUrl=gmapsTransitUrl(poi.lat,poi.lng,c.lat,c.lng);
+      const walkUrl=gmapsWalkUrl(poi.lat,poi.lng,c.lat,c.lng);
+      const mvUrl=moovitUrl(poi.lat,poi.lng,c.lat,c.lng,poi.name,d.name);
+      return`<div class="poi-popup-route" onclick="setMapActive('${d.id}');leafletMap.closePopup()">
+        <div style="flex:1;min-width:0">
+          <div class="poi-route-name">${d.name}</div>
+          <div style="display:flex;gap:7px;margin-top:3px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:11px;color:#aaa">${dot} ${mins} min · ${km} km</span>
+            <a href="${walkUrl}" target="_blank" onclick="event.stopPropagation()" style="font-size:10px;color:#888;text-decoration:none;padding:1px 6px;border:1px solid #333;border-radius:4px;display:inline-flex;align-items:center;gap:2px">🚶 Pie</a>
+            <a href="${transitUrl}" target="_blank" onclick="event.stopPropagation()" style="font-size:10px;color:#60a5fa;text-decoration:none;padding:1px 6px;border:1px solid #1d3a5e;border-radius:4px;display:inline-flex;align-items:center;gap:2px">🚌 GMaps</a>
+            <a href="${mvUrl}" target="_blank" onclick="event.stopPropagation()" style="font-size:10px;color:#f97316;text-decoration:none;padding:1px 6px;border:1px solid #7c2d12;border-radius:4px;display:inline-flex;align-items:center;gap:2px">🚇 Moovit</a>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function buildPopupHtml(filterQ=''){
+    return`<div class="poi-popup">
+      <div class="poi-popup-header">
+        <div class="poi-popup-type">${typeLabel}</div>
+        <div class="poi-popup-name">${poi.name}</div>
+        ${poi.addr&&poi.addr!=='(marcado en mapa)'?`<div class="poi-popup-addr"><i class="ti ti-map-pin" style="font-size:10px"></i> ${poi.addr}</div>`:''}
+      </div>
+      ${withDist.length?`
+        <div style="padding:8px 14px 4px;border-bottom:1px solid #2a2a2a">
+          <div class="poi-popup-travel-title" style="margin-bottom:6px">
+            <i class="ti ti-building-estate" style="font-size:12px"></i>
+            Todos los deptos (${withDist.length}) — a pie real
+          </div>
+          <input
+            type="text"
+            placeholder="Filtrar deptos..."
+            value="${filterQ}"
+            oninput="(function(el){const p=el.closest('.leaflet-popup');const m=window._currentPoiMarker;if(m)m.setPopupContent(window._buildPoiPopup(el.value))})(this)"
+            style="width:100%;padding:5px 8px;border:1px solid #333;border-radius:6px;font-size:11px;background:#222;color:#e8e8e8;font-family:inherit;outline:none"
+          >
+        </div>
+        <div style="max-height:200px;overflow-y:auto;padding:4px 14px 6px" id="poi-routes-list">
+          ${buildRows(filterQ)}
+        </div>`
+        :`<div style="padding:12px 14px;font-size:11px;color:#555">Geocodificá deptos primero para ver distancias</div>`}
+      <div class="poi-popup-links">
+        <a class="poi-transport-btn" style="background:#1a73e8;color:#fff" href="${poiGmaps}" target="_blank">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          Google Maps
+        </a>
+        <a class="poi-transport-btn" style="background:#f05a28;color:#fff" href="${poiMoovit}" target="_blank">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 3l5 9H7l5-9z"/></svg>
+          Moovit
+        </a>
+      </div>
+      <button onclick="deletePoi('${poi.id}')" class="poi-popup-del"><i class="ti ti-trash" style="font-size:12px"></i> Eliminar lugar</button>
+    </div>`;
+  }
+
+  // Expose builder globally so the inline oninput can call it
+  window._buildPoiPopup=buildPopupHtml;
+  window._currentPoiMarker=marker;
+
+  marker.bindPopup(buildPopupHtml(),{maxWidth:300,className:'ds-popup'}).openPopup();
+}
+
+function deletePoi(id){
+  pois=pois.filter(p=>p.id!==id);savePois();
+  const m=poiMarkers.find(x=>x.id===id);
+  if(m){leafletMap.removeLayer(m.marker);}
+  poiMarkers=poiMarkers.filter(x=>x.id!==id);
+  leafletMap.closePopup();
+  renderPoiList();
+}
+
+async function addPoiFromForm(){
+  const name=document.getElementById('poi-name-input').value.trim();
+  const type=document.getElementById('poi-type-input').value;
+  const addr=document.getElementById('poi-addr-input').value.trim();
+  if(!name){showToast('Poné un nombre para el lugar');return;}
+  if(!addr){showToast('Ingresá una dirección o hacé clic en el mapa');return;}
+  const statusEl=document.getElementById('map-geo-status');
+  const textEl=document.getElementById('map-geo-text');
+  statusEl.classList.add('show');textEl.textContent=`Buscando: ${addr}`;
+  const coords=await geocodeAddr(addr);
+  statusEl.classList.remove('show');
+  if(!coords){showToast('No se encontró la dirección. Probá siendo más específico o usá clic en el mapa.');return;}
+  addPoi({name,type,lat:coords.lat,lng:coords.lng,addr});
+  document.getElementById('poi-name-input').value='';
+  document.getElementById('poi-addr-input').value='';
+  leafletMap.flyTo([coords.lat,coords.lng],15,{duration:.6});
+}
+
+function renderPoiList(){
+  const el=document.getElementById('poi-list');
+  if(!el)return;
+  if(!pois.length){
+    el.innerHTML=`<div style="padding:1.5rem;text-align:center;color:var(--text3);font-size:12px"><i class="ti ti-star-off" style="font-size:24px;display:block;margin-bottom:6px;opacity:.4"></i>Sin lugares marcados</div>`;
+    return;
+  }
+  el.innerHTML=pois.map(p=>`
+    <div class="poi-item">
+      <div class="poi-dot" style="background:${POI_COLORS[p.type]||'#aaa'}"></div>
+      <div style="flex:1;min-width:0">
+        <div class="poi-name">${esc(p.name)}</div>
+        ${p.addr&&p.addr!=='(marcado en mapa)'?`<div style="font-size:10px;color:var(--text3)">${esc(p.addr)}</div>`:''}
+      </div>
+      <span class="poi-type">${POI_TYPE_LABELS[p.type]||p.type}</span>
+      <div class="poi-actions">
+        <button class="ibt" onclick="flyToPoi('${p.id}')" title="Ver en mapa"><i class="ti ti-map-pin"></i></button>
+        <button class="ibt" onclick="deletePoi('${p.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function flyToPoi(id){
+  const p=pois.find(x=>x.id===id);if(!p)return;
+  leafletMap.flyTo([p.lat,p.lng],16,{duration:.7});
+  const m=poiMarkers.find(x=>x.id===id);
+  if(m)setTimeout(()=>m.marker.openPopup(),800);
+}
+
+// ---- ZONES / HEATMAP ----
+function startZoneClick(){
+  zoneClickMode=!zoneClickMode;
+  poiClickMode=false;
+  const btn=document.getElementById('zone-click-btn');
+  btn.classList.toggle('btn-danger',zoneClickMode);
+  leafletMap.getContainer().style.cursor=zoneClickMode?'crosshair':'';
+  if(zoneClickMode)showToast('Hacé clic en el mapa para marcar una zona favorita');
+}
+
+async function addZoneFromAddr(){
+  const addr=document.getElementById('zone-addr-input').value.trim();
+  const name=document.getElementById('zone-name-input').value.trim()||addr;
+  if(!addr){showToast('Ingresá una dirección de referencia para la zona');return;}
+  const statusEl=document.getElementById('map-geo-status');
+  const textEl=document.getElementById('map-geo-text');
+  statusEl.classList.add('show');textEl.textContent=`Buscando zona: ${addr}`;
+  const coords=await geocodeAddr(addr);
+  statusEl.classList.remove('show');
+  if(!coords){showToast('No se encontró la dirección');return;}
+  const radius=parseInt(document.getElementById('zone-radius-input').value)||500;
+  addZone({name,lat:coords.lat,lng:coords.lng,radius,color:selectedZoneColor,addr});
+  document.getElementById('zone-addr-input').value='';
+  leafletMap.flyTo([coords.lat,coords.lng],15,{duration:.6});
+}
+
+function addZone(zone){
+  if(!zone.id)zone.id=gid();
+  zones.push(zone);saveZones();
+  renderZoneCircleSingle(zone);
+  renderZoneList();
+  if(heatmapOn)updateHeatmap();
+}
+
+function renderZoneCircles(){
+  zoneCircles.forEach(c=>leafletMap.removeLayer(c));
+  zoneCircles=[];
+  zones.forEach(z=>renderZoneCircleSingle(z));
+}
+
+function renderZoneCircleSingle(zone){
+  const circle=L.circle([zone.lat,zone.lng],{
+    radius:zone.radius,color:zone.color,fillColor:zone.color,
+    fillOpacity:0.12,weight:2,dashArray:'6,4',opacity:0.7
+  }).addTo(leafletMap);
+  circle.bindTooltip(esc(zone.name),{permanent:false,direction:'center'});
+  zoneCircles.push(circle);
+}
+
+function deleteZone(id){
+  const idx=zones.findIndex(z=>z.id===id);
+  if(idx>=0){
+    if(zoneCircles[idx])leafletMap.removeLayer(zoneCircles[idx]);
+    zoneCircles.splice(idx,1);
+    zones.splice(idx,1);
+    saveZones();renderZoneList();
+    if(heatmapOn)updateHeatmap();
+  }
+}
+
+function renderZoneList(){
+  const el=document.getElementById('zone-list');
+  if(!el)return;
+  if(!zones.length){
+    el.innerHTML=`<div style="padding:.5rem 0;text-align:center;color:var(--text3);font-size:12px"><i class="ti ti-map-off" style="font-size:22px;display:block;margin-bottom:5px;opacity:.4"></i>Sin zonas marcadas</div>`;
+    return;
+  }
+  el.innerHTML=zones.map(z=>`
+    <div class="zone-item">
+      <div class="zone-dot" style="background:${z.color}"></div>
+      <div style="flex:1;min-width:0">
+        <div class="zone-name">${z.name}</div>
+        <div style="font-size:10px;color:var(--text3)">Radio ${z.radius}m</div>
+      </div>
+      <button class="ibt" onclick="deleteZone('${z.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+    </div>
+  `).join('');
+}
+
+function toggleHeatmap(){
+  heatmapOn=!heatmapOn;
+  const btn=document.getElementById('heatmap-toggle-btn');
+  btn.innerHTML=`<i class="ti ti-flame"></i> Mapa de calor: ${heatmapOn?'ON':'OFF'}`;
+  btn.style.background=heatmapOn?'#e05d5d':'';
+  btn.style.borderColor=heatmapOn?'#e05d5d':'';
+  if(heatmapOn)updateHeatmap();
+  else if(heatLayer){leafletMap.removeLayer(heatLayer);heatLayer=null;}
+}
+
+function updateHeatmap(){
+  if(heatLayer){leafletMap.removeLayer(heatLayer);heatLayer=null;}
+  if(!zones.length){showToast('Agregá al menos una zona favorita primero');heatmapOn=false;const btn=document.getElementById('heatmap-toggle-btn');btn.innerHTML='<i class="ti ti-flame"></i> Mapa de calor: OFF';btn.style.background='';btn.style.borderColor='';return;}
+  const cache=loadGeoCache();
+  // Build heatmap points: one cluster per zone
+  const points=[];
+  zones.forEach(z=>{
+    // central point with high intensity
+    points.push([z.lat,z.lng,1.0]);
+    // surrounding gradient
+    for(let i=1;i<=5;i++){
+      const r=(z.radius/111320)*i/5;
+      for(let a=0;a<8;a++){
+        const angle=(a/8)*Math.PI*2;
+        points.push([z.lat+Math.sin(angle)*r,z.lng+Math.cos(angle)*r/(Math.cos(z.lat*Math.PI/180)),1.0-i*.16]);
+      }
+    }
+  });
+  heatLayer=L.heatLayer(points,{radius:55,blur:45,maxZoom:17,gradient:{0:'#000033',0.2:'#0000ff',0.4:'#00ffff',0.6:'#00ff00',0.8:'#ffff00',1.0:'#ff0000'}}).addTo(leafletMap);
+}
+
+// Patch save() to refresh map
+const _origSave=save;
+save=function(){
+  _origSave();
+  if(leafletMap&&document.getElementById('screen-mapa').classList.contains('active')){
+    mapMarkers.forEach(m=>leafletMap.removeLayer(m.marker));mapMarkers=[];mapActiveId=null;
+    renderMapMarkers();renderMapList();
+  }
+};
+
+// ── TOAST ──
+function showToast(msg,type='info'){
+  let tc=document.getElementById('toast-container');
+  if(!tc){tc=document.createElement('div');tc.id='toast-container';tc.style.cssText='position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none';document.body.appendChild(tc);}
+  const t=document.createElement('div');
+  t.style.cssText=`background:${type==='success'?'var(--green-bg)':type==='error'?'var(--red-bg)':'var(--bg3)'};color:${type==='success'?'var(--green-text)':type==='error'?'var(--red-text)':'var(--text)'};border:1px solid ${type==='success'?'var(--green)':type==='error'?'var(--red-text)':'var(--border2)'};padding:.5rem 1.1rem;border-radius:var(--radius);font-size:13px;font-weight:500;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.3);animation:fadein .2s ease`;
+  t.textContent=msg;tc.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300);},2500);
+}
+
+// ── CLIPBOARD PASTE (Ctrl+V) for images ──
+document.addEventListener('paste', function(e){
+  // Only handle when the capture tab is active and modal is open
+  const modal=document.getElementById('modal-add');
+  if(!modal.classList.contains('open'))return;
+  const tabImg=document.getElementById('tab-img');
+  if(!tabImg.classList.contains('active'))return;
+  const items=Array.from(e.clipboardData?.items||[]);
+  const imgItems=items.filter(item=>item.type.startsWith('image/'));
+  if(!imgItems.length)return;
+  e.preventDefault();
+  imgItems.forEach(item=>{
+    const file=item.getAsFile();
+    if(!file)return;
+    const mime=file.type||'image/jpeg';
+    const reader=new FileReader();
+    reader.onload=function(ev){
+      addImageFromClipboard(ev.target.result, mime);
+      setStatus('<span style="color:var(--green-text)"><i class="ti ti-clipboard" style="font-size:13px"></i> Imagen pegada desde el portapapeles</span>');
+      setTimeout(()=>setStatus(''),2000);
+    };
+    reader.readAsDataURL(file);
+  });
+});
+
+// ── EXTENSION IMPORT via URL hash ──
+// When the page loads with #import=<JSON>, pre-fill and open the add modal
+function checkHashImport(){
+  try{
+    const hash=decodeURIComponent(location.hash||'');
+    if(!hash.startsWith('#import='))return;
+    const raw=hash.slice('#import='.length);
+    const data=JSON.parse(raw);
+    // Clear the hash so it doesn't re-trigger on refresh
+    history.replaceState(null,'',location.pathname+location.search);
+    // Small delay to let the app render first
+    setTimeout(()=>{
+      openM('modal-add');
+      resetForm();
+      // Map portal name to src
+      const src=data.src||'manual';
+      window._importedSrc=src;
+      // Fill photos
+      if(data.photos&&data.photos.length){
+        window._importedPhotos=data.photos;
+        const el=document.getElementById('f-photos');
+        if(el){el.value=data.photos.join('\n');previewPhotos();}
+      }
+      // Fill link
+      if(data.link){const el=document.getElementById('f-link');if(el)el.value=data.link;}
+      // Fill all other fields via fillForm
+      fillForm(data, data.link||'', src);
+      showToast('📋 Publicación importada desde la extensión','success');
+    },300);
+  }catch(e){
+    // Silently ignore parse errors
+  }
+}
+
+// Init
+load();
+applyTheme();
+renderResumen();
+checkHashImport();
+
+function clearRangeFilters(){
+  ['filter-price-min','filter-price-max','filter-m2-min'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderDeptos();
+}
+</script>
+</body>
+</html>
