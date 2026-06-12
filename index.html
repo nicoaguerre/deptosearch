@@ -463,6 +463,7 @@ body.light-mode .leaflet-popup-tip{background:#fff!important}
   <button class="nav-btn" onclick="nav('mapa')"><i class="ti ti-map-2"></i>Mapa</button>
   <button class="nav-btn" onclick="nav('visitas')"><i class="ti ti-calendar-event"></i>Visitas</button>
   <button class="nav-btn" onclick="nav('comparar')"><i class="ti ti-scale"></i>Comparar</button>
+  <button class="nav-btn" onclick="nav('novedades')"><i class="ti ti-bell-ringing"></i>Novedades</button>
   <span class="nav-sec">Configuración</span>
   <button class="nav-btn" onclick="nav('criterios')"><i class="ti ti-checklist"></i>Mis criterios</button>
   <button class="nav-btn" onclick="nav('ajustes')"><i class="ti ti-settings"></i>Ajustes</button>
@@ -669,6 +670,31 @@ body.light-mode .leaflet-popup-tip{background:#fff!important}
       </div>
     </div>
 
+    <div class="screen" id="screen-novedades">
+      <div id="nov-empty-state" style="text-align:center;padding:2.5rem 1rem;color:var(--text2)">
+        <i class="ti ti-bell-ringing" style="font-size:36px;display:block;margin-bottom:.75rem;opacity:.3;color:var(--accent)"></i>
+        <p style="font-size:14px;font-weight:500;margin-bottom:.5rem">Buscá novedades con la extensión</p>
+        <p style="font-size:12px;color:var(--text3);line-height:1.6;max-width:300px;margin:0 auto">Abrí la extensión DeptoSearch Importer en tu navegador, andá a la pestaña <strong>Novedades</strong> y hacé clic en "Buscar novedades".<br><br>Los resultados van a aparecer acá.</p>
+      </div>
+      <div id="nov-screen-results" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+          <div>
+            <span id="nov-screen-count" style="font-size:13px;font-weight:500"></span>
+            <span id="nov-screen-time" style="font-size:11px;color:var(--text3);margin-left:8px"></span>
+          </div>
+          <button class="btn btn-sm" onclick="clearNovedades()"><i class="ti ti-trash"></i>Limpiar</button>
+        </div>
+        <div class="filter-row" id="nov-filter-row">
+          <button class="fc on" onclick="filterNov(this,'all')">Todos</button>
+          <button class="fc" onclick="filterNov(this,'zonaprop')">🟢 Zonaprop</button>
+          <button class="fc" onclick="filterNov(this,'argenprop')">🔵 Argenprop</button>
+          <button class="fc" onclick="filterNov(this,'mercadolibre')">🟡 MercadoLibre</button>
+        </div>
+        <div class="cards-grid" id="nov-cards"></div>
+      </div>
+    </div>
+
+
     <div class="screen" id="screen-criterios">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.4rem">
         <div>
@@ -871,7 +897,7 @@ window._importedPhotos=[];window._importedSrc='manual';
 
 const SL={interesado:'Interesado',visita:'Visita programada',visitado:'Visitado',favorito:'Favorito',negociacion:'En negociación',descartado:'Descartado'};
 const SC={interesado:'st-interesado',visita:'st-visita',visitado:'st-visitado',favorito:'st-favorito',negociacion:'st-negociacion',descartado:'st-descartado'};
-const SCREENS=['resumen','deptos','mapa','visitas','comparar','criterios','ajustes'];
+const SCREENS=['resumen','deptos','mapa','visitas','comparar','novedades','criterios','ajustes'];
 
 function getKey(){return localStorage.getItem('ds-groq-key')||''}
 function saveConfig(){
@@ -2005,7 +2031,7 @@ function nav(s){
   // Toggle scroll wrapper: map lives outside it
   const scrollWrap=document.querySelector('.main-scroll');
   if(scrollWrap)scrollWrap.style.display=s==='mapa'?'none':'flex';
-  document.getElementById('page-title').textContent={resumen:'Resumen',deptos:'Departamentos',mapa:'Mapa',visitas:'Visitas',comparar:'Comparar deptos',criterios:'Mis criterios',ajustes:'Ajustes'}[s];
+  document.getElementById('page-title').textContent={resumen:'Resumen',deptos:'Departamentos',mapa:'Mapa',visitas:'Visitas',comparar:'Comparar deptos',novedades:'Novedades del día',criterios:'Mis criterios',ajustes:'Ajustes'}[s];
   const tb=document.getElementById('topbar-btns');
   tb.innerHTML=(s==='resumen'||s==='deptos'||s==='visitas'||s==='mapa')?`<button class="btn btn-primary" onclick="openAddModal()"><i class="ti ti-plus"></i>Agregar depto</button>`:'';
   renderScreen(s);
@@ -2019,6 +2045,7 @@ function renderScreen(s){
   else if(s==='mapa')renderMapList();
   else if(s==='visitas')renderVisitas();
   else if(s==='comparar')renderComparar();
+  else if(s==='novedades')renderNovedades();
   else if(s==='criterios')renderCriterios();
 }
 
@@ -2710,11 +2737,165 @@ function checkHashImport(){
   }
 }
 
+
+// ── NOVEDADES ─────────────────────────────────────────────────────────────
+
+let novScreenFilter = 'all';
+let novScreenItems = [];
+
+function renderNovedades() {
+  const stored = localStorage.getItem('ds-novedades');
+  if (!stored) {
+    document.getElementById('nov-empty-state').style.display = 'block';
+    document.getElementById('nov-screen-results').style.display = 'none';
+    return;
+  }
+  try {
+    const data = JSON.parse(stored);
+    novScreenItems = data.items || [];
+    if (!novScreenItems.length) {
+      document.getElementById('nov-empty-state').style.display = 'block';
+      document.getElementById('nov-screen-results').style.display = 'none';
+      return;
+    }
+    document.getElementById('nov-empty-state').style.display = 'none';
+    document.getElementById('nov-screen-results').style.display = 'block';
+    const d = new Date(data.timestamp);
+    document.getElementById('nov-screen-time').textContent = `Actualizado: ${d.toLocaleDateString('es-AR')} ${d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}`;
+    renderNovCards();
+  } catch(e) {
+    document.getElementById('nov-empty-state').style.display = 'block';
+    document.getElementById('nov-screen-results').style.display = 'none';
+  }
+}
+
+function filterNov(btn, portal) {
+  novScreenFilter = portal;
+  document.querySelectorAll('#nov-filter-row .fc').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderNovCards();
+}
+
+function renderNovCards() {
+  const grid = document.getElementById('nov-cards');
+  grid.innerHTML = '';
+  const items = novScreenFilter === 'all' ? novScreenItems : novScreenItems.filter(i => i.portal === novScreenFilter);
+  document.getElementById('nov-screen-count').textContent = `${items.length} publicación${items.length !== 1 ? 'es' : ''}`;
+
+  if (!items.length) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><i class="ti ti-search-off"></i><p>Sin resultados para este filtro</p></div>';
+    return;
+  }
+
+  items.forEach(item => {
+    const srcColors = {
+      zonaprop:     {bg:'#0d2018',color:'#4ade9e',label:'🟢 Zonaprop'},
+      argenprop:    {bg:'#0c2a4a',color:'#60a5fa',label:'🔵 Argenprop'},
+      mercadolibre: {bg:'#1f1500',color:'#f59e0b',label:'🟡 MercadoLibre'},
+    };
+    const src = srcColors[item.portal] || {bg:'#222',color:'#aaa',label:'Portal'};
+    const hasImg = item.img && item.img.startsWith('http');
+    const title = esc(item.title || item.addr || 'Sin título');
+    const addr = item.addr && item.addr !== item.title ? esc(item.addr) : '';
+    const price = esc(item.price || '');
+    const alreadySaved = deptos.some(d => d.link === item.link);
+
+    grid.insertAdjacentHTML('beforeend', `
+      <div class="dcard">
+        <div class="dcard-img">
+          ${hasImg
+            ? `<img src="${esc(item.img)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=no-img><i class=ti ti-building-estate></i><span>Sin foto</span></div>'">`
+            : `<div class="no-img"><i class="ti ti-building-estate"></i><span>Sin foto</span></div>`
+          }
+        </div>
+        <div class="dcard-body">
+          <div class="dcard-title">${title}</div>
+          ${addr ? `<div class="dcard-addr">${addr}</div>` : ''}
+          <div class="price-row">
+            <span class="price" style="color:#a5a0ff">${price}</span>
+          </div>
+          ${item.rooms ? `<div class="meta-chips"><span class="chip"><i class="ti ti-door"></i>${esc(item.rooms)}</span>${item.m2?`<span class="chip"><i class="ti ti-ruler"></i>${esc(item.m2)}</span>`:''}</div>` : ''}
+        </div>
+        <div class="dcard-foot" style="gap:6px">
+          <span class="badge" style="background:${src.bg};color:${src.color};font-size:10px">${src.label}</span>
+          <div style="display:flex;gap:6px;margin-left:auto">
+            <a href="${esc(item.link)}" target="_blank" class="btn btn-sm" style="padding:4px 10px;font-size:11px;text-decoration:none"><i class="ti ti-external-link"></i>Ver</a>
+            ${alreadySaved
+              ? `<button class="btn btn-sm" style="font-size:11px;opacity:.5" disabled><i class="ti ti-check"></i>Guardado</button>`
+              : `<button class="btn btn-primary btn-sm" style="font-size:11px" onclick='importNovItem(${JSON.stringify(JSON.stringify(item))})'><i class="ti ti-plus"></i>Importar</button>`
+            }
+          </div>
+        </div>
+      </div>`);
+  });
+}
+
+function importNovItem(itemJson) {
+  const item = JSON.parse(itemJson);
+  // Pre-fill the add modal with available data
+  openM('modal-add');
+  resetForm();
+  window._importedSrc = item.portal || 'manual';
+  if (item.img) {
+    window._importedPhotos = [item.img];
+    const fp = document.getElementById('f-photos');
+    if (fp) { fp.value = item.img; previewPhotos(); }
+  }
+  if (item.link) {
+    const fl = document.getElementById('f-link');
+    if (fl) fl.value = item.link;
+    // Pre-fill import URL for Groq enrichment
+    const iu = document.getElementById('import-url');
+    if (iu) iu.value = item.link;
+  }
+  // Fill basic fields
+  const fname = document.getElementById('f-name');
+  if (fname) fname.value = item.title || item.addr || '';
+  const faddr = document.getElementById('f-addr');
+  if (faddr) faddr.value = item.addr || '';
+  showToast('📋 Publicación cargada — completá los datos o usá Importar con IA', 'success');
+}
+
+function clearNovedades() {
+  if (!confirm('¿Borrar todos los resultados de novedades?')) return;
+  localStorage.removeItem('ds-novedades');
+  novScreenItems = [];
+  renderNovedades();
+}
+
+// Listen for novedades data sent by the extension via postMessage or hash
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'deptoSearchNovedades') {
+    const payload = { items: e.data.items, timestamp: new Date().toISOString() };
+    localStorage.setItem('ds-novedades', JSON.stringify(payload));
+    if (curScreen() === 'novedades') renderNovedades();
+    showToast(`✅ ${e.data.items.length} novedades recibidas`, 'success');
+  }
+});
+
+// Also check hash for novedades payload (extension sends #novedades=JSON)
+function checkHashNovedades() {
+  try {
+    const hash = decodeURIComponent(location.hash || '');
+    if (!hash.startsWith('#novedades=')) return;
+    const raw = hash.slice('#novedades='.length);
+    const data = JSON.parse(raw);
+    history.replaceState(null, '', location.pathname + location.search);
+    const payload = { items: data, timestamp: new Date().toISOString() };
+    localStorage.setItem('ds-novedades', JSON.stringify(payload));
+    setTimeout(() => {
+      nav('novedades');
+      showToast(`✅ ${data.length} novedades recibidas`, 'success');
+    }, 300);
+  } catch(e) {}
+}
+
 // Init
 load();
 applyTheme();
 renderResumen();
 checkHashImport();
+checkHashNovedades();
 
 function clearRangeFilters(){
   ['filter-price-min','filter-price-max','filter-m2-min'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
