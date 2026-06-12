@@ -1973,6 +1973,30 @@ function matchesCriterion(haystack, item){
   return getCriterionAlternatives(item).some(term=>matchesTerm(haystack,term));
 }
 
+function lowExpensesLimit(){
+  const values=deptos.map(d=>Number(d.expensas)).filter(v=>Number.isFinite(v)&&v>0).sort((a,b)=>a-b);
+  if(!values.length)return 100000;
+  const mid=Math.floor(values.length/2);
+  return values.length%2?values[mid]:Math.round((values[mid-1]+values[mid])/2);
+}
+
+function expenseCriterion(item,d){
+  const text=norm(item);
+  if(!text.includes('expensa'))return null;
+  const explicit=String(item).match(/\d[\d.,]*/);
+  const limit=explicit?Number(explicit[0].replace(/[.,]/g,'')):lowExpensesLimit();
+  const value=Number(d.expensas);
+  return {
+    ok:Number.isFinite(value)&&value>=0&&value<=limit,
+    label:`${item} ($${Number.isFinite(value)?value.toLocaleString():'?'} ≤ $${limit.toLocaleString()})`
+  };
+}
+
+function matchesDeptoCriterion(d,haystack,item){
+  const expenses=expenseCriterion(item,d);
+  return expenses?expenses.ok:matchesCriterion(haystack,item);
+}
+
 function getCriterioInputs(){
   return {
     budget:parseFloat(document.getElementById('cr-budget')?.value)||180000,
@@ -1993,7 +2017,7 @@ function compatScore(d){
   else s+=20;
   if(mustItems.length){
     const haystack=d.tags+' '+d.pros+' '+d.notes+' '+d.name+' '+d.luz+' '+d.orient+' '+d.floor;
-    const matched=mustItems.filter(item=>matchesCriterion(haystack,item)).length;
+    const matched=mustItems.filter(item=>matchesDeptoCriterion(d,haystack,item)).length;
     s+=Math.round((matched/mustItems.length)*15);
   } else s+=15;
   return Math.min(s,100);
@@ -2009,6 +2033,11 @@ function compatDetails(d){
   checks.push({ok:!!((d.m2t||d.m2c)&&(d.m2t||d.m2c||0)>=size),lbl:(d.m2t||d.m2c||'?')+' m² (mín '+size+')'});
   if(zona)checks.push({ok:addrH.includes(zona),lbl:'Zona: '+(document.getElementById('cr-zona')?.value||zona)});
   mustItems.forEach(item=>{
+    const expenses=expenseCriterion(item,d);
+    if(expenses){
+      checks.push({ok:expenses.ok,lbl:expenses.label});
+      return;
+    }
     const alternatives=getCriterionAlternatives(item);
     const matchedAlternative=alternatives.find(term=>matchesTerm(mustH,term));
     const ok=!!matchedAlternative;
