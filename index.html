@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -716,6 +717,27 @@ body.light-mode .leaflet-popup-tip{background:#fff!important}
 
     <div class="screen" id="screen-ajustes">
 
+      <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.7rem">Sincronización entre dispositivos</div>
+      <div class="settings-card" style="max-width:480px;margin-bottom:1.25rem">
+        <div id="sync-signed-out">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:.85rem;line-height:1.6">Creá una cuenta o iniciá sesión para ver los mismos datos en la computadora y el celular. Tus datos locales se conservan como respaldo.</div>
+          <div class="frow"><label>Email</label><input type="email" id="sync-email" autocomplete="email" placeholder="tu@email.com"></div>
+          <div class="frow"><label>Contraseña</label><input type="password" id="sync-password" autocomplete="current-password" minlength="6" placeholder="Mínimo 6 caracteres"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="signInSupabase()"><i class="ti ti-login"></i>Iniciar sesión</button>
+            <button class="btn" onclick="signUpSupabase()"><i class="ti ti-user-plus"></i>Crear cuenta</button>
+          </div>
+        </div>
+        <div id="sync-signed-in" style="display:none">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:.85rem">Sesión iniciada como <strong id="sync-user-email"></strong>.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="syncNow()"><i class="ti ti-cloud-upload"></i>Sincronizar ahora</button>
+            <button class="btn" onclick="signOutSupabase()"><i class="ti ti-logout"></i>Cerrar sesión</button>
+          </div>
+        </div>
+        <div id="sync-status" style="font-size:12px;margin-top:.7rem;min-height:18px;color:var(--text2)"></div>
+      </div>
+
       <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.7rem">Exportar / Importar datos</div>
       <div class="settings-card" style="max-width:480px;margin-bottom:1.25rem">
         <div style="font-size:12px;color:var(--text2);margin-bottom:.85rem;line-height:1.6">Guardá todos tus departamentos y visitas en un archivo <code style="background:var(--bg3);padding:1px 6px;border-radius:4px;font-size:11px">.json</code> para transferirlos a otro dispositivo o navegador.</div>
@@ -888,6 +910,9 @@ body.light-mode .leaflet-popup-tip{background:#fff!important}
 const GROQ_ENDPOINT='https://api.groq.com/openai/v1/chat/completions';
 const GROQ_TEXT_MODEL='llama-3.3-70b-versatile';
 const GROQ_VISION_MODEL='meta-llama/llama-4-scout-17b-16e-instruct';
+const SUPABASE_URL='https://otnzdchkufvtlbfnkjfh.supabase.co';
+const SUPABASE_KEY='sb_publishable_Up_LMf66Pqo3rEtdA2euog_njYIzIVM';
+const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 let deptos=[],visits=[],editingId=null,formStars=0,filterSt='todos',cmpSel=[],currentDetailId=null;
 let captureImages=[]; // [{b64, mime}]
@@ -939,6 +964,111 @@ function load(){
 
 function save(){
   try{localStorage.setItem('ds-deptos',JSON.stringify(deptos));localStorage.setItem('ds-visits',JSON.stringify(visits));}catch(e){}
+  scheduleCloudSync();
+}
+
+let syncTimer=null;
+let syncUser=null;
+let applyingCloudData=false;
+function syncStatus(message,type=''){
+  const el=document.getElementById('sync-status');if(!el)return;
+  const color=type==='error'?'var(--red-text)':type==='success'?'var(--green-text)':'var(--text2)';
+  el.innerHTML=`<span style="color:${color}">${esc(message)}</span>`;
+}
+function cloudPayload(){
+  const extra={};
+  for(let i=0;i<localStorage.length;i++){
+    const key=localStorage.key(i);
+    if(key&&(key.startsWith('ds-log-')||key.startsWith('ds-ph-')))extra[key]=localStorage.getItem(key);
+  }
+  return{
+    version:1,deptos,visits,pois:loadPois(),zones:loadZones(),geocache:loadGeoCache(),
+    criterios:(()=>{try{return JSON.parse(localStorage.getItem('ds-criterios')||'null')}catch(e){return null}})(),
+    novedades:(()=>{try{return JSON.parse(localStorage.getItem('ds-novedades')||'null')}catch(e){return null}})(),
+    extra
+  };
+}
+function applyCloudPayload(data){
+  if(!data)return;
+  applyingCloudData=true;
+  try{
+    localStorage.setItem('ds-before-cloud-restore',JSON.stringify({
+      savedAt:new Date().toISOString(),payload:cloudPayload()
+    }));
+    deptos=Array.isArray(data.deptos)?data.deptos:deptos;
+    visits=Array.isArray(data.visits)?data.visits:visits;
+    localStorage.setItem('ds-deptos',JSON.stringify(deptos));
+    localStorage.setItem('ds-visits',JSON.stringify(visits));
+    if(Array.isArray(data.pois)){localStorage.setItem(POI_KEY,JSON.stringify(data.pois));pois=data.pois}
+    if(Array.isArray(data.zones)){localStorage.setItem(ZONE_KEY,JSON.stringify(data.zones));zones=data.zones}
+    if(data.geocache)localStorage.setItem(GEO_CACHE_KEY,JSON.stringify(data.geocache));
+    if(data.criterios)localStorage.setItem('ds-criterios',JSON.stringify(data.criterios));
+    if(data.novedades)localStorage.setItem('ds-novedades',JSON.stringify(data.novedades));
+    Object.entries(data.extra||{}).forEach(([key,value])=>localStorage.setItem(key,value));
+    loadCriterios();renderScreen(curScreen());
+  }finally{applyingCloudData=false}
+}
+function scheduleCloudSync(){
+  if(applyingCloudData||!syncUser)return;
+  clearTimeout(syncTimer);syncTimer=setTimeout(()=>pushCloudData(false),1200);
+}
+async function pushCloudData(showMessage=true){
+  if(!syncUser)return;
+  if(showMessage)syncStatus('Guardando copia online...');
+  const{error}=await supabaseClient.from('user_backups').upsert({
+    user_id:syncUser.id,payload:cloudPayload(),updated_at:new Date().toISOString()
+  },{onConflict:'user_id'});
+  if(error){syncStatus('No se pudo sincronizar: '+error.message,'error');return false}
+  syncStatus('Sincronizado correctamente. Tus datos locales siguen guardados.','success');return true;
+}
+async function syncNow(){
+  if(!syncUser)return;
+  const{data,error}=await supabaseClient.from('user_backups').select('payload,updated_at').eq('user_id',syncUser.id).maybeSingle();
+  if(error){syncStatus('No se pudo leer la copia online: '+error.message,'error');return}
+  if(!data){await pushCloudData();return}
+  const remoteCount=Array.isArray(data.payload?.deptos)?data.payload.deptos.length:0;
+  const localCount=deptos.length;
+  if(localCount&&remoteCount&&JSON.stringify(data.payload)!==JSON.stringify(cloudPayload())){
+    const useRemote=confirm(`Hay datos distintos en este dispositivo y en la nube.\n\nLocal: ${localCount} deptos\nOnline: ${remoteCount} deptos\n\nAceptar: usar la copia online.\nCancelar: conservar esta copia local y subirla.`);
+    if(useRemote){applyCloudPayload(data.payload);syncStatus('Copia online descargada. Guardamos una instantánea local anterior por seguridad.','success')}
+    else await pushCloudData();
+    return;
+  }
+  if(remoteCount&&!localCount){applyCloudPayload(data.payload);syncStatus('Datos descargados desde Supabase.','success')}
+  else await pushCloudData();
+}
+async function signUpSupabase(){
+  const email=document.getElementById('sync-email').value.trim();
+  const password=document.getElementById('sync-password').value;
+  if(!email||password.length<6){syncStatus('Ingresá un email y una contraseña de al menos 6 caracteres.','error');return}
+  syncStatus('Creando cuenta...');
+  const{data,error}=await supabaseClient.auth.signUp({email,password});
+  if(error){syncStatus(error.message,'error');return}
+  if(data.session){syncUser=data.user;updateSyncUI();await syncNow()}
+  else syncStatus('Cuenta creada. Revisá tu email para confirmarla y después iniciá sesión.','success');
+}
+async function signInSupabase(){
+  const email=document.getElementById('sync-email').value.trim();
+  const password=document.getElementById('sync-password').value;
+  syncStatus('Iniciando sesión...');
+  const{data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+  if(error){syncStatus('No se pudo iniciar sesión: '+error.message,'error');return}
+  syncUser=data.user;updateSyncUI();await syncNow();
+}
+async function signOutSupabase(){
+  await supabaseClient.auth.signOut();syncUser=null;updateSyncUI();syncStatus('Sesión cerrada. Los datos locales siguen disponibles.');
+}
+function updateSyncUI(){
+  const out=document.getElementById('sync-signed-out'),inside=document.getElementById('sync-signed-in');
+  if(!out||!inside)return;
+  out.style.display=syncUser?'none':'block';inside.style.display=syncUser?'block':'none';
+  const email=document.getElementById('sync-user-email');if(email)email.textContent=syncUser?.email||'';
+}
+async function initSupabase(){
+  const{data}=await supabaseClient.auth.getSession();
+  syncUser=data.session?.user||null;updateSyncUI();
+  if(syncUser)await syncNow();
+  supabaseClient.auth.onAuthStateChange((_event,session)=>{syncUser=session?.user||null;updateSyncUI()});
 }
 
 // ── THEME ──
@@ -2896,6 +3026,7 @@ applyTheme();
 renderResumen();
 checkHashImport();
 checkHashNovedades();
+initSupabase();
 
 function clearRangeFilters(){
   ['filter-price-min','filter-price-max','filter-m2-min'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
