@@ -3102,7 +3102,6 @@ function renderNovCards() {
     const title = esc(item.title || item.addr || 'Sin título');
     const addr = item.addr && item.addr !== item.title ? esc(item.addr) : '';
     const price = esc(item.price || '');
-    const alreadySaved = deptos.some(d => d.link === item.link);
 
     grid.insertAdjacentHTML('beforeend', `
       <div class="dcard" role="link" tabindex="0" onclick="openNovLink(${itemIndex})" onkeydown="if(event.key==='Enter')openNovLink(${itemIndex})">
@@ -3124,10 +3123,7 @@ function renderNovCards() {
           <span class="badge" style="background:${src.bg};color:${src.color};font-size:10px">${src.label}</span>
           <div style="display:flex;gap:6px;margin-left:auto">
             <button class="ibt" title="Eliminar" aria-label="Eliminar publicación" onclick="event.stopPropagation();deleteNovItem(${itemIndex})"><i class="ti ti-trash"></i></button>
-            ${alreadySaved
-              ? `<button class="btn btn-sm" style="font-size:11px;opacity:.5" disabled><i class="ti ti-check"></i>Guardado</button>`
-              : `<button class="btn btn-primary btn-sm" style="font-size:11px" onclick='event.stopPropagation();importNovItem(${JSON.stringify(JSON.stringify(item))})'><i class="ti ti-plus"></i>Importar</button>`
-            }
+            <span style="font-size:11px;color:var(--text3);display:flex;align-items:center;gap:4px"><i class="ti ti-external-link"></i>Abrir aviso</span>
           </div>
         </div>
       </div>`);
@@ -3150,8 +3146,23 @@ function deleteNovItem(index) {
 }
 
 function novShortName(item) {
-  const raw=String(item.addr||item.title||'Sin nombre').trim();
-  return raw.split(',')[0].trim()||'Sin nombre';
+  const raw=String(item.addr||item.title||'Sin nombre').replace(/\s+/g,' ').trim();
+  const first=raw.split(',')[0].trim();
+  return first.replace(/(\d)([A-ZÁÉÍÓÚÑ])/g,'$1 $2')||'Sin nombre';
+}
+
+function novNumber(value) {
+  const match=String(value||'').replace(',','.').match(/\d+(?:\.\d+)?/);
+  return match?Number(match[0]):null;
+}
+
+function novPrice(value) {
+  const text=String(value||'').toUpperCase();
+  if(/\bARS\b|PESOS?/.test(text))return null;
+  const match=text.match(/\d[\d.,\s]*/);
+  if(!match)return null;
+  const amount=Number(match[0].replace(/[.,\s]/g,''));
+  return Number.isFinite(amount)?amount:null;
 }
 
 function importNovItem(itemJson) {
@@ -3176,7 +3187,19 @@ function importNovItem(itemJson) {
   const fname = document.getElementById('f-name');
   if (fname) fname.value = novShortName(item);
   const faddr = document.getElementById('f-addr');
-  if (faddr) faddr.value = item.addr || item.title || '';
+  if (faddr) faddr.value = String(item.addr || item.title || '').replace(/\s+/g,' ').replace(/(\d)([A-ZÁÉÍÓÚÑ])/g,'$1 $2').trim();
+  const price=novPrice(item.price);
+  const rooms=novNumber(item.rooms);
+  const m2=novNumber(item.m2);
+  if(price)document.getElementById('f-price').value=price;
+  if(rooms){
+    document.getElementById('f-rooms').value=rooms;
+    if(rooms>1)document.getElementById('f-beds').value=rooms-1;
+  }
+  if(m2){
+    document.getElementById('f-m2c').value=m2;
+    document.getElementById('f-m2t').value=m2;
+  }
   showToast('📋 Publicación cargada — completá los datos o usá Importar con IA', 'success');
 }
 
