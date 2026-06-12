@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f0f0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>DeptoSearch v6</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon192.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -943,6 +947,7 @@ body.light-mode .leaflet-popup-tip{background:#fff!important}
         <div class="frow"><label>Contraseña</label><input type="password" id="sync-password" autocomplete="current-password" minlength="6" placeholder="Mínimo 6 caracteres" onkeydown="if(event.key==='Enter')signInSupabase()"></div>
         <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="signInSupabase()"><i class="ti ti-login"></i>Iniciar sesión</button>
         <button class="btn" style="width:100%;justify-content:center;margin-top:8px" onclick="signUpSupabase()">Crear una cuenta</button>
+        <button class="ibt" style="width:100%;font-size:12px;margin-top:12px" onclick="resetPasswordSupabase()">Olvidé mi contraseña</button>
       </div>
       <div id="sync-signed-in" style="display:none">
         <div class="account-hero">
@@ -955,6 +960,7 @@ body.light-mode .leaflet-popup-tip{background:#fff!important}
           <span style="font-size:12px;color:var(--text2)" id="modal-sync-state">Sincronizado</span>
         </div>
         <button class="btn" style="width:100%;justify-content:center;margin-top:12px" onclick="syncNow()"><i class="ti ti-refresh"></i>Comprobar ahora</button>
+        <button class="btn" id="install-app-btn" style="width:100%;justify-content:center;margin-top:8px;display:none" onclick="installApp()"><i class="ti ti-device-mobile-down"></i>Instalar DeptoSearch</button>
         <button class="btn btn-danger" style="width:100%;justify-content:center;margin-top:8px" onclick="signOutSupabase()"><i class="ti ti-logout"></i>Cerrar sesión</button>
       </div>
       <div id="sync-status" style="font-size:12px;text-align:center;margin-top:.8rem;min-height:18px;color:var(--text2)"></div>
@@ -1026,6 +1032,9 @@ function save(){
 let syncTimer=null;
 let syncUser=null;
 let applyingCloudData=false;
+let lastCloudUpdated=null;
+let lastSyncAt=null;
+let deferredInstallPrompt=null;
 function setSyncVisual(state,label){
   const className=state==='ok'?'ok':state==='busy'?'busy':state==='error'?'error':'';
   ['sidebar-sync-dot','modal-sync-dot'].forEach(id=>{
@@ -1033,6 +1042,14 @@ function setSyncVisual(state,label){
   });
   const sidebar=document.getElementById('sidebar-sync-state');if(sidebar)sidebar.textContent=label;
   const modal=document.getElementById('modal-sync-state');if(modal)modal.textContent=label;
+}
+function syncTimeLabel(){
+  if(!navigator.onLine)return'Sin conexión · se guardará después';
+  if(!lastSyncAt)return'Sincronizado';
+  const seconds=Math.max(0,Math.round((Date.now()-lastSyncAt.getTime())/1000));
+  if(seconds<10)return'Sincronizado ahora';
+  if(seconds<60)return`Sincronizado hace ${seconds}s`;
+  return`Sincronizado hace ${Math.floor(seconds/60)} min`;
 }
 function syncStatus(message,type=''){
   const el=document.getElementById('sync-status');if(!el)return;
@@ -1075,18 +1092,40 @@ function applyCloudPayload(data){
 }
 function scheduleCloudSync(){
   if(applyingCloudData||!syncUser)return;
+  if(!navigator.onLine){setSyncVisual('error','Sin conexión · pendiente');return}
   setSyncVisual('busy','Guardando...');
   clearTimeout(syncTimer);syncTimer=setTimeout(()=>pushCloudData(false),1200);
 }
 async function pushCloudData(showMessage=true){
   if(!syncUser)return;
+  if(!navigator.onLine){setSyncVisual('error','Sin conexión · pendiente');syncStatus('Trabajás sin conexión. Los cambios se subirán cuando vuelva internet.');return false}
   setSyncVisual('busy','Guardando...');
   if(showMessage)syncStatus('Guardando...');
+  if(lastCloudUpdated){
+    const{data:current,error:checkError}=await supabaseClient.from('user_backups').select('payload,updated_at').eq('user_id',syncUser.id).maybeSingle();
+    if(checkError){syncStatus('No se pudo comprobar la copia online: '+checkError.message,'error');return false}
+    if(current?.updated_at&&current.updated_at!==lastCloudUpdated){
+      applyCloudPayload(current.payload);
+      lastCloudUpdated=current.updated_at;
+      lastSyncAt=new Date();
+      setSyncVisual('ok',syncTimeLabel());
+      syncStatus('Había cambios más nuevos online y se descargaron automáticamente.','success');
+      return true;
+    }
+  }
+  const updatedAt=new Date().toISOString();
+  const payload=cloudPayload();
   const{error}=await supabaseClient.from('user_backups').upsert({
-    user_id:syncUser.id,payload:cloudPayload(),updated_at:new Date().toISOString()
+    user_id:syncUser.id,payload,updated_at:updatedAt
   },{onConflict:'user_id'});
   if(error){syncStatus('No se pudo sincronizar: '+error.message,'error');return false}
-  setSyncVisual('ok','Sincronizado');
+  lastCloudUpdated=updatedAt;
+  lastSyncAt=new Date();
+  const{error:historyError}=await supabaseClient.from('user_backup_history').insert({user_id:syncUser.id,payload});
+  if(historyError&&!historyError.message.includes('user_backup_history')){
+    console.warn('No se pudo crear el respaldo histórico:',historyError.message);
+  }
+  setSyncVisual('ok',syncTimeLabel());
   syncStatus(showMessage?'Todo está actualizado.':'','success');return true;
 }
 async function syncNow(){
@@ -1101,6 +1140,7 @@ async function syncNow(){
     await pushCloudData();
     return;
   }
+  lastCloudUpdated=data.updated_at;
   const remoteCount=Array.isArray(data.payload?.deptos)?data.payload.deptos.length:0;
   const localCount=deptos.length;
   const firstSync=!hasChosen;
@@ -1111,6 +1151,7 @@ async function syncNow(){
     if(useRemote){
       applyCloudPayload(data.payload);
       setSyncVisual('ok','Sincronizado');
+      lastSyncAt=new Date();
       syncStatus('Copia online descargada. Guardamos una instantánea local anterior por seguridad.','success');
     }else{
       await pushCloudData();
@@ -1121,10 +1162,12 @@ async function syncNow(){
     applyCloudPayload(data.payload);
     localStorage.setItem(choiceKey,'done');
     setSyncVisual('ok','Sincronizado');
+    lastSyncAt=new Date();
     syncStatus(firstSync?'Datos descargados desde Supabase.':'Todo está actualizado.','success');
   }else{
     localStorage.setItem(choiceKey,'done');
     setSyncVisual('ok','Sincronizado');
+    lastSyncAt=new Date();
     syncStatus('Todo está actualizado.','success');
   }
 }
@@ -1145,6 +1188,21 @@ async function signInSupabase(){
   const{data,error}=await supabaseClient.auth.signInWithPassword({email,password});
   if(error){syncStatus('No se pudo iniciar sesión: '+error.message,'error');return}
   syncUser=data.user;updateSyncUI();await syncNow();closeM('modal-account');showToast('Sesión iniciada · datos sincronizados','success');
+}
+async function resetPasswordSupabase(){
+  const email=document.getElementById('sync-email').value.trim();
+  if(!email){syncStatus('Escribí tu email primero.','error');return}
+  const redirectTo=location.origin+location.pathname;
+  const{error}=await supabaseClient.auth.resetPasswordForEmail(email,{redirectTo});
+  if(error){syncStatus('No se pudo enviar el correo: '+error.message,'error');return}
+  syncStatus('Te enviamos un enlace para crear una contraseña nueva.','success');
+}
+async function setNewPassword(){
+  const password=prompt('Escribí tu nueva contraseña (mínimo 6 caracteres):');
+  if(!password)return;
+  if(password.length<6){showToast('La contraseña debe tener al menos 6 caracteres','error');return}
+  const{error}=await supabaseClient.auth.updateUser({password});
+  showToast(error?'No se pudo cambiar la contraseña':'Contraseña actualizada',error?'error':'success');
 }
 async function signOutSupabase(){
   await supabaseClient.auth.signOut();syncUser=null;updateSyncUI();syncStatus('');closeM('modal-account');showToast('Sesión cerrada');
@@ -1167,7 +1225,23 @@ async function initSupabase(){
   const{data}=await supabaseClient.auth.getSession();
   syncUser=data.session?.user||null;updateSyncUI();
   if(syncUser)await syncNow();
-  supabaseClient.auth.onAuthStateChange((_event,session)=>{syncUser=session?.user||null;updateSyncUI()});
+  supabaseClient.auth.onAuthStateChange((event,session)=>{
+    syncUser=session?.user||null;updateSyncUI();
+    if(event==='PASSWORD_RECOVERY')setTimeout(setNewPassword,300);
+  });
+}
+window.addEventListener('online',()=>{if(syncUser){setSyncVisual('busy','Reconectando...');syncNow()}});
+window.addEventListener('offline',()=>setSyncVisual('error','Sin conexión · pendiente'));
+window.addEventListener('beforeinstallprompt',event=>{
+  event.preventDefault();deferredInstallPrompt=event;
+  const btn=document.getElementById('install-app-btn');if(btn)btn.style.display='flex';
+});
+async function installApp(){
+  if(!deferredInstallPrompt)return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt=null;
+  const btn=document.getElementById('install-app-btn');if(btn)btn.style.display='none';
 }
 
 // ── THEME ──
@@ -3126,6 +3200,8 @@ renderResumen();
 checkHashImport();
 checkHashNovedades();
 initSupabase();
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+setInterval(()=>{if(syncUser&&lastSyncAt)setSyncVisual(navigator.onLine?'ok':'error',syncTimeLabel())},30000);
 
 function clearRangeFilters(){
   ['filter-price-min','filter-price-max','filter-m2-min'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
