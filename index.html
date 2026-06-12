@@ -1925,6 +1925,8 @@ const SINONIMOS=[
   ['baulera','deposito','depósito','guardamuebles'],
   ['apto credito','apto crédito','banco','financiacion','financiación','hipoteca'],
   ['portero','seguridad','vigilancia','conserjeria','conserjería'],
+  ['ascensor','elevador'],
+  ['planta baja','pb','p.b.','piso 0'],
   ['lavadero','lavarropas'],
   ['cerca subte','subte','metro','transporte','colectivo','omnibus'],
   ['frente','contrafrente','interno'],
@@ -1963,6 +1965,14 @@ function matchesTerm(haystack, term){
   });
 }
 
+function getCriterionAlternatives(item){
+  return String(item||'').split(/\s+(?:o|u)\s+|\s*\/\s*/i).map(x=>x.trim()).filter(Boolean);
+}
+
+function matchesCriterion(haystack, item){
+  return getCriterionAlternatives(item).some(term=>matchesTerm(haystack,term));
+}
+
 function getCriterioInputs(){
   return {
     budget:parseFloat(document.getElementById('cr-budget')?.value)||180000,
@@ -1982,8 +1992,8 @@ function compatScore(d){
   if(zona){const h=norm(d.addr+' '+d.name);if(h.includes(zona))s+=20;}
   else s+=20;
   if(mustItems.length){
-    const haystack=d.tags+' '+d.pros+' '+d.notes+' '+d.name+' '+d.luz+' '+d.orient;
-    const matched=mustItems.filter(item=>matchesTerm(haystack,item)).length;
+    const haystack=d.tags+' '+d.pros+' '+d.notes+' '+d.name+' '+d.luz+' '+d.orient+' '+d.floor;
+    const matched=mustItems.filter(item=>matchesCriterion(haystack,item)).length;
     s+=Math.round((matched/mustItems.length)*15);
   } else s+=15;
   return Math.min(s,100);
@@ -1992,16 +2002,19 @@ function compatScore(d){
 function compatDetails(d){
   const {budget,rooms,size,zona,mustItems}=getCriterioInputs();
   const addrH=norm(d.addr+' '+d.name);
-  const mustH=d.tags+' '+d.pros+' '+d.notes+' '+d.name+' '+d.luz+' '+d.orient;
+  const mustH=d.tags+' '+d.pros+' '+d.notes+' '+d.name+' '+d.luz+' '+d.orient+' '+d.floor;
   const checks=[];
   checks.push({ok:!!(d.price&&d.price<=budget),lbl:'Precio: USD '+(d.price?.toLocaleString()||'?')+' ≤ '+budget.toLocaleString()});
   checks.push({ok:!!(d.rooms&&d.rooms>=rooms),lbl:(d.rooms||'?')+' amb. (mín '+rooms+')'});
   checks.push({ok:!!((d.m2t||d.m2c)&&(d.m2t||d.m2c||0)>=size),lbl:(d.m2t||d.m2c||'?')+' m² (mín '+size+')'});
   if(zona)checks.push({ok:addrH.includes(zona),lbl:'Zona: '+(document.getElementById('cr-zona')?.value||zona)});
   mustItems.forEach(item=>{
-    const ok=matchesTerm(mustH,item);
-    const syns=getSinonimos(item);
-    const hint=syns.length>1&&!norm(mustH).includes(norm(item))?' (≈'+syns.find(s=>norm(mustH).includes(norm(s)))+')':'';
+    const alternatives=getCriterionAlternatives(item);
+    const matchedAlternative=alternatives.find(term=>matchesTerm(mustH,term));
+    const ok=!!matchedAlternative;
+    const syns=matchedAlternative?getSinonimos(matchedAlternative):[];
+    const synonym=syns.find(s=>norm(mustH).includes(norm(s)));
+    const hint=ok&&synonym&&norm(synonym)!==norm(matchedAlternative)?' (≈'+synonym+')':'';
     checks.push({ok,lbl:item+(ok?hint:'')});
   });
   return checks;
