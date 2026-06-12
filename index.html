@@ -2020,13 +2020,13 @@ function closeSidebar(){
 
 function nav(s){
   closeSidebar();
-  SCREENS.forEach((sc,i)=>{
-    document.querySelectorAll('.nav-btn')[i].classList.remove('active');
+  SCREENS.forEach((sc)=>{
     const el=document.getElementById('screen-'+sc);
     if(el)el.classList.remove('active');
   });
-  const i=SCREENS.indexOf(s);
-  document.querySelectorAll('.nav-btn')[i].classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(btn=>btn.classList.remove('active'));
+  const activeBtn=document.querySelector(`.nav-btn[onclick="nav('${s}')"]`);
+  if(activeBtn)activeBtn.classList.add('active');
   document.getElementById('screen-'+s).classList.add('active');
   // Toggle scroll wrapper: map lives outside it
   const scrollWrap=document.querySelector('.main-scroll');
