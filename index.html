@@ -1103,7 +1103,7 @@ function seed(){
 // ---- GEMINI ----
 const EXTRACT_PROMPT=`Sos un asistente que extrae información de publicaciones de inmuebles argentinos.
 Analizá la imagen/texto y devolvé SOLO un JSON (sin explicación, sin markdown, sin bloques de código, solo el JSON puro):
-{"name":"referencia corta descriptiva","addr":"dirección completa","price":numero_usd_o_null,"expensas":numero_ars_o_null,"rooms":numero_o_null,"beds":numero_o_null,"baths":numero_o_null,"m2c":m2_cubiertos_o_null,"m2d":m2_descubiertos_o_null,"m2t":m2_totales_o_null,"floor":"piso y unidad o null","age":"antigüedad o null","orient":"orientacion o null","luz":"luminosidad estimada o null","tags":"caracteristicas separadas por coma o null","contact":"telefono o email o null","pros":"aspectos positivos separados por coma o null","cons":"aspectos negativos o null"}
+{"name":"dirección corta del inmueble, ej: 'Av. Corrientes 1234' o 'Thames 567 3°B'. Usá solo calle y número (más unidad si hay). Sin barrio ni ciudad.","addr":"dirección completa con barrio y ciudad","price":numero_usd_o_null,"expensas":numero_ars_o_null,"rooms":numero_o_null,"beds":numero_o_null,"baths":numero_o_null,"m2c":m2_cubiertos_o_null,"m2d":m2_descubiertos_o_null,"m2t":m2_totales_o_null,"floor":"piso y unidad o null","age":"antigüedad o null","orient":"orientacion o null","luz":"luminosidad estimada o null","tags":"caracteristicas separadas por coma o null","contact":"telefono o email o null","pros":"aspectos positivos separados por coma o null","cons":"aspectos negativos o null"}
 El precio SIEMPRE en USD. Expensas en ARS. Si no encontrás un campo ponelo como null.`;
 
 async function callGroq(prompt, imageB64, imageMime){
