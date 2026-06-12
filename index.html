@@ -1094,17 +1094,39 @@ async function syncNow(){
   setSyncVisual('busy','Comprobando...');
   const{data,error}=await supabaseClient.from('user_backups').select('payload,updated_at').eq('user_id',syncUser.id).maybeSingle();
   if(error){syncStatus('No se pudo leer la copia online: '+error.message,'error');return}
-  if(!data){await pushCloudData();return}
-  const remoteCount=Array.isArray(data.payload?.deptos)?data.payload.deptos.length:0;
-  const localCount=deptos.length;
-  if(localCount&&remoteCount&&JSON.stringify(data.payload)!==JSON.stringify(cloudPayload())){
-    const useRemote=confirm(`Hay datos distintos en este dispositivo y en la nube.\n\nLocal: ${localCount} deptos\nOnline: ${remoteCount} deptos\n\nAceptar: usar la copia online.\nCancelar: conservar esta copia local y subirla.`);
-    if(useRemote){applyCloudPayload(data.payload);syncStatus('Copia online descargada. Guardamos una instantánea local anterior por seguridad.','success')}
-    else await pushCloudData();
+  const choiceKey='ds-sync-choice-'+syncUser.id;
+  if(!data){
+    await pushCloudData();
+    localStorage.setItem(choiceKey,'local');
     return;
   }
-  if(remoteCount&&!localCount){applyCloudPayload(data.payload);syncStatus('Datos descargados desde Supabase.','success')}
-  else await pushCloudData();
+  const remoteCount=Array.isArray(data.payload?.deptos)?data.payload.deptos.length:0;
+  const localCount=deptos.length;
+  const firstSync=!localStorage.getItem(choiceKey);
+  const dataDiffers=JSON.stringify(data.payload)!==JSON.stringify(cloudPayload());
+  if(firstSync&&localCount&&remoteCount&&dataDiffers){
+    const useRemote=confirm(`Hay datos distintos en este dispositivo y en la nube.\n\nLocal: ${localCount} deptos\nOnline: ${remoteCount} deptos\n\nAceptar: usar la copia online.\nCancelar: conservar esta copia local y subirla.`);
+    if(useRemote){
+      applyCloudPayload(data.payload);
+      localStorage.setItem(choiceKey,'online');
+      setSyncVisual('ok','Sincronizado');
+      syncStatus('Copia online descargada. Guardamos una instantánea local anterior por seguridad.','success');
+    }else{
+      await pushCloudData();
+      localStorage.setItem(choiceKey,'local');
+    }
+    return;
+  }
+  if(remoteCount&&dataDiffers){
+    applyCloudPayload(data.payload);
+    localStorage.setItem(choiceKey,'online');
+    setSyncVisual('ok','Sincronizado');
+    syncStatus(firstSync?'Datos descargados desde Supabase.':'Todo está actualizado.','success');
+  }else{
+    localStorage.setItem(choiceKey,'online');
+    setSyncVisual('ok','Sincronizado');
+    syncStatus('Todo está actualizado.','success');
+  }
 }
 async function signUpSupabase(){
   const email=document.getElementById('sync-email').value.trim();
