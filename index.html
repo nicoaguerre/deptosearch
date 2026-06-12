@@ -39,6 +39,17 @@ body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
 .nav-btn i{font-size:17px}
 .nav-btn:hover{background:var(--bg3);color:var(--text)}
 .nav-btn.active{background:var(--bg3);color:var(--text);font-weight:500;border-right:2px solid var(--accent)}
+.account-entry{margin-top:auto;padding:.75rem;border-top:1px solid var(--border)}
+.account-btn{width:100%;display:flex;align-items:center;gap:9px;padding:9px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg3);color:var(--text);cursor:pointer;font-family:inherit;text-align:left}
+.account-btn:hover{border-color:var(--border2)}
+.account-avatar{width:30px;height:30px;border-radius:50%;background:#1e1a3f;color:#a5a0ff;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.account-copy{min-width:0;flex:1}
+.account-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-state{font-size:10px;color:var(--text3);margin-top:2px;display:flex;align-items:center;gap:5px}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.sync-dot.ok{background:var(--green-text)}
+.sync-dot.busy{background:var(--yellow-text)}
+.sync-dot.error{background:var(--red-text)}
 .main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
 .main-scroll{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-height:0}
 .topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:.85rem 1.4rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
@@ -204,6 +215,14 @@ body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
 /* Ajustes */
 .settings-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;max-width:480px}
 .settings-card h3{font-size:13px;font-weight:500;margin-bottom:1rem;color:var(--text2)}
+.account-hero{text-align:center;padding:.4rem 0 1rem}
+.account-hero-icon{width:52px;height:52px;border-radius:50%;background:#1e1a3f;color:#a5a0ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto .7rem}
+.account-hero h3{font-size:17px;font-weight:600;margin-bottom:5px}
+.account-hero p{font-size:12px;color:var(--text2);line-height:1.5}
+.account-summary{display:flex;align-items:center;gap:10px}
+.account-summary-copy{flex:1;min-width:0}
+.account-summary-title{font-size:13px;font-weight:500}
+.account-summary-sub{font-size:11px;color:var(--text3);margin-top:3px}
 
 /* Scrollbar */
 ::-webkit-scrollbar{width:6px;height:6px}
@@ -468,6 +487,16 @@ body.light-mode .leaflet-popup-tip{background:#fff!important}
   <span class="nav-sec">Configuración</span>
   <button class="nav-btn" onclick="nav('criterios')"><i class="ti ti-checklist"></i>Mis criterios</button>
   <button class="nav-btn" onclick="nav('ajustes')"><i class="ti ti-settings"></i>Ajustes</button>
+  <div class="account-entry">
+    <button class="account-btn" onclick="openAccountModal()">
+      <span class="account-avatar"><i class="ti ti-user"></i></span>
+      <span class="account-copy">
+        <span class="account-name" id="sidebar-account-name">Tu cuenta</span>
+        <span class="account-state"><span class="sync-dot" id="sidebar-sync-dot"></span><span id="sidebar-sync-state">Iniciar sesión</span></span>
+      </span>
+      <i class="ti ti-chevron-right" style="color:var(--text3)"></i>
+    </button>
+  </div>
 </div>
 
 <div class="main">
@@ -717,25 +746,16 @@ body.light-mode .leaflet-popup-tip{background:#fff!important}
 
     <div class="screen" id="screen-ajustes">
 
-      <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.7rem">Sincronización entre dispositivos</div>
+      <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.7rem">Tu cuenta</div>
       <div class="settings-card" style="max-width:480px;margin-bottom:1.25rem">
-        <div id="sync-signed-out">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:.85rem;line-height:1.6">Creá una cuenta o iniciá sesión para ver los mismos datos en la computadora y el celular. Tus datos locales se conservan como respaldo.</div>
-          <div class="frow"><label>Email</label><input type="email" id="sync-email" autocomplete="email" placeholder="tu@email.com"></div>
-          <div class="frow"><label>Contraseña</label><input type="password" id="sync-password" autocomplete="current-password" minlength="6" placeholder="Mínimo 6 caracteres"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-primary" onclick="signInSupabase()"><i class="ti ti-login"></i>Iniciar sesión</button>
-            <button class="btn" onclick="signUpSupabase()"><i class="ti ti-user-plus"></i>Crear cuenta</button>
+        <div class="account-summary">
+          <span class="account-avatar"><i class="ti ti-user"></i></span>
+          <div class="account-summary-copy">
+            <div class="account-summary-title" id="settings-account-title">Sin sesión iniciada</div>
+            <div class="account-summary-sub" id="settings-account-sub">Iniciá sesión para usar tus datos en todos tus dispositivos.</div>
           </div>
+          <button class="btn btn-sm" onclick="openAccountModal()">Ver cuenta</button>
         </div>
-        <div id="sync-signed-in" style="display:none">
-          <div style="font-size:12px;color:var(--text2);margin-bottom:.85rem">Sesión iniciada como <strong id="sync-user-email"></strong>.</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-primary" onclick="syncNow()"><i class="ti ti-cloud-upload"></i>Sincronizar ahora</button>
-            <button class="btn" onclick="signOutSupabase()"><i class="ti ti-logout"></i>Cerrar sesión</button>
-          </div>
-        </div>
-        <div id="sync-status" style="font-size:12px;margin-top:.7rem;min-height:18px;color:var(--text2)"></div>
       </div>
 
       <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:.7rem">Exportar / Importar datos</div>
@@ -906,6 +926,42 @@ body.light-mode .leaflet-popup-tip{background:#fff!important}
 </div>
 </div>
 
+<div class="modal-wrap" id="modal-account" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title" tabindex="-1" style="max-width:420px">
+    <div class="modal-head">
+      <h3 id="account-modal-title">Tu cuenta</h3>
+      <button class="ibt" onclick="closeM('modal-account')" aria-label="Cerrar"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div id="sync-signed-out">
+        <div class="account-hero">
+          <div class="account-hero-icon"><i class="ti ti-cloud"></i></div>
+          <h3>Tené tus datos siempre con vos</h3>
+          <p>Iniciá sesión para ver tus departamentos en la computadora y el celular.</p>
+        </div>
+        <div class="frow"><label>Email</label><input type="email" id="sync-email" autocomplete="email" placeholder="tu@email.com"></div>
+        <div class="frow"><label>Contraseña</label><input type="password" id="sync-password" autocomplete="current-password" minlength="6" placeholder="Mínimo 6 caracteres" onkeydown="if(event.key==='Enter')signInSupabase()"></div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="signInSupabase()"><i class="ti ti-login"></i>Iniciar sesión</button>
+        <button class="btn" style="width:100%;justify-content:center;margin-top:8px" onclick="signUpSupabase()">Crear una cuenta</button>
+      </div>
+      <div id="sync-signed-in" style="display:none">
+        <div class="account-hero">
+          <div class="account-hero-icon"><i class="ti ti-user-check"></i></div>
+          <h3 id="sync-user-email"></h3>
+          <p>Tus cambios se guardan automáticamente en todos tus dispositivos.</p>
+        </div>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:.8rem 1rem;display:flex;align-items:center;gap:8px">
+          <span class="sync-dot ok" id="modal-sync-dot"></span>
+          <span style="font-size:12px;color:var(--text2)" id="modal-sync-state">Sincronizado</span>
+        </div>
+        <button class="btn" style="width:100%;justify-content:center;margin-top:12px" onclick="syncNow()"><i class="ti ti-refresh"></i>Comprobar ahora</button>
+        <button class="btn btn-danger" style="width:100%;justify-content:center;margin-top:8px" onclick="signOutSupabase()"><i class="ti ti-logout"></i>Cerrar sesión</button>
+      </div>
+      <div id="sync-status" style="font-size:12px;text-align:center;margin-top:.8rem;min-height:18px;color:var(--text2)"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 const GROQ_ENDPOINT='https://api.groq.com/openai/v1/chat/completions';
 const GROQ_TEXT_MODEL='llama-3.3-70b-versatile';
@@ -970,10 +1026,19 @@ function save(){
 let syncTimer=null;
 let syncUser=null;
 let applyingCloudData=false;
+function setSyncVisual(state,label){
+  const className=state==='ok'?'ok':state==='busy'?'busy':state==='error'?'error':'';
+  ['sidebar-sync-dot','modal-sync-dot'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.className='sync-dot'+(className?' '+className:'');
+  });
+  const sidebar=document.getElementById('sidebar-sync-state');if(sidebar)sidebar.textContent=label;
+  const modal=document.getElementById('modal-sync-state');if(modal)modal.textContent=label;
+}
 function syncStatus(message,type=''){
   const el=document.getElementById('sync-status');if(!el)return;
   const color=type==='error'?'var(--red-text)':type==='success'?'var(--green-text)':'var(--text2)';
   el.innerHTML=`<span style="color:${color}">${esc(message)}</span>`;
+  if(type==='error')setSyncVisual('error','Sin conexión');
 }
 function cloudPayload(){
   const extra={};
@@ -1010,19 +1075,23 @@ function applyCloudPayload(data){
 }
 function scheduleCloudSync(){
   if(applyingCloudData||!syncUser)return;
+  setSyncVisual('busy','Guardando...');
   clearTimeout(syncTimer);syncTimer=setTimeout(()=>pushCloudData(false),1200);
 }
 async function pushCloudData(showMessage=true){
   if(!syncUser)return;
-  if(showMessage)syncStatus('Guardando copia online...');
+  setSyncVisual('busy','Guardando...');
+  if(showMessage)syncStatus('Guardando...');
   const{error}=await supabaseClient.from('user_backups').upsert({
     user_id:syncUser.id,payload:cloudPayload(),updated_at:new Date().toISOString()
   },{onConflict:'user_id'});
   if(error){syncStatus('No se pudo sincronizar: '+error.message,'error');return false}
-  syncStatus('Sincronizado correctamente. Tus datos locales siguen guardados.','success');return true;
+  setSyncVisual('ok','Sincronizado');
+  syncStatus(showMessage?'Todo está actualizado.':'','success');return true;
 }
 async function syncNow(){
   if(!syncUser)return;
+  setSyncVisual('busy','Comprobando...');
   const{data,error}=await supabaseClient.from('user_backups').select('payload,updated_at').eq('user_id',syncUser.id).maybeSingle();
   if(error){syncStatus('No se pudo leer la copia online: '+error.message,'error');return}
   if(!data){await pushCloudData();return}
@@ -1053,16 +1122,24 @@ async function signInSupabase(){
   syncStatus('Iniciando sesión...');
   const{data,error}=await supabaseClient.auth.signInWithPassword({email,password});
   if(error){syncStatus('No se pudo iniciar sesión: '+error.message,'error');return}
-  syncUser=data.user;updateSyncUI();await syncNow();
+  syncUser=data.user;updateSyncUI();await syncNow();closeM('modal-account');showToast('Sesión iniciada · datos sincronizados','success');
 }
 async function signOutSupabase(){
-  await supabaseClient.auth.signOut();syncUser=null;updateSyncUI();syncStatus('Sesión cerrada. Los datos locales siguen disponibles.');
+  await supabaseClient.auth.signOut();syncUser=null;updateSyncUI();syncStatus('');closeM('modal-account');showToast('Sesión cerrada');
 }
+function openAccountModal(){closeSidebar();syncStatus('');openM('modal-account')}
 function updateSyncUI(){
   const out=document.getElementById('sync-signed-out'),inside=document.getElementById('sync-signed-in');
   if(!out||!inside)return;
   out.style.display=syncUser?'none':'block';inside.style.display=syncUser?'block':'none';
   const email=document.getElementById('sync-user-email');if(email)email.textContent=syncUser?.email||'';
+  const sidebarName=document.getElementById('sidebar-account-name');
+  const settingsTitle=document.getElementById('settings-account-title');
+  const settingsSub=document.getElementById('settings-account-sub');
+  if(sidebarName)sidebarName.textContent=syncUser?(syncUser.email?.split('@')[0]||'Tu cuenta'):'Tu cuenta';
+  if(settingsTitle)settingsTitle.textContent=syncUser?(syncUser.email||'Sesión iniciada'):'Sin sesión iniciada';
+  if(settingsSub)settingsSub.textContent=syncUser?'Tus cambios se guardan automáticamente.':'Iniciá sesión para usar tus datos en todos tus dispositivos.';
+  setSyncVisual(syncUser?'ok':'',syncUser?'Sincronizado':'Iniciar sesión');
 }
 async function initSupabase(){
   const{data}=await supabaseClient.auth.getSession();
