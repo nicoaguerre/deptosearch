@@ -3091,6 +3091,7 @@ function renderNovCards() {
   }
 
   items.forEach(item => {
+    const itemIndex = novScreenItems.indexOf(item);
     const srcColors = {
       zonaprop:     {bg:'#0d2018',color:'#4ade9e',label:'🟢 Zonaprop'},
       argenprop:    {bg:'#0c2a4a',color:'#60a5fa',label:'🔵 Argenprop'},
@@ -3104,7 +3105,7 @@ function renderNovCards() {
     const alreadySaved = deptos.some(d => d.link === item.link);
 
     grid.insertAdjacentHTML('beforeend', `
-      <div class="dcard">
+      <div class="dcard" role="link" tabindex="0" onclick="openNovLink(${itemIndex})" onkeydown="if(event.key==='Enter')openNovLink(${itemIndex})">
         <div class="dcard-img">
           ${hasImg
             ? `<img src="${esc(item.img)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=no-img><i class=ti ti-building-estate></i><span>Sin foto</span></div>'">`
@@ -3122,15 +3123,35 @@ function renderNovCards() {
         <div class="dcard-foot" style="gap:6px">
           <span class="badge" style="background:${src.bg};color:${src.color};font-size:10px">${src.label}</span>
           <div style="display:flex;gap:6px;margin-left:auto">
-            <a href="${esc(item.link)}" target="_blank" class="btn btn-sm" style="padding:4px 10px;font-size:11px;text-decoration:none"><i class="ti ti-external-link"></i>Ver</a>
+            <button class="ibt" title="Eliminar" aria-label="Eliminar publicación" onclick="event.stopPropagation();deleteNovItem(${itemIndex})"><i class="ti ti-trash"></i></button>
             ${alreadySaved
               ? `<button class="btn btn-sm" style="font-size:11px;opacity:.5" disabled><i class="ti ti-check"></i>Guardado</button>`
-              : `<button class="btn btn-primary btn-sm" style="font-size:11px" onclick='importNovItem(${JSON.stringify(JSON.stringify(item))})'><i class="ti ti-plus"></i>Importar</button>`
+              : `<button class="btn btn-primary btn-sm" style="font-size:11px" onclick='event.stopPropagation();importNovItem(${JSON.stringify(JSON.stringify(item))})'><i class="ti ti-plus"></i>Importar</button>`
             }
           </div>
         </div>
       </div>`);
   });
+}
+
+function openNovLink(index) {
+  const item=novScreenItems[index];
+  const link=safeUrl(item?.link);
+  if(link)window.open(link,'_blank','noopener');
+}
+
+function deleteNovItem(index) {
+  if(index<0||index>=novScreenItems.length)return;
+  novScreenItems.splice(index,1);
+  const stored=JSON.parse(localStorage.getItem('ds-novedades')||'{}');
+  localStorage.setItem('ds-novedades',JSON.stringify({...stored,items:novScreenItems}));
+  renderNovCards();
+  showToast('Publicación eliminada');
+}
+
+function novShortName(item) {
+  const raw=String(item.addr||item.title||'Sin nombre').trim();
+  return raw.split(',')[0].trim()||'Sin nombre';
 }
 
 function importNovItem(itemJson) {
@@ -3153,9 +3174,9 @@ function importNovItem(itemJson) {
   }
   // Fill basic fields
   const fname = document.getElementById('f-name');
-  if (fname) fname.value = item.title || item.addr || '';
+  if (fname) fname.value = novShortName(item);
   const faddr = document.getElementById('f-addr');
-  if (faddr) faddr.value = item.addr || '';
+  if (faddr) faddr.value = item.addr || item.title || '';
   showToast('📋 Publicación cargada — completá los datos o usá Importar con IA', 'success');
 }
 
