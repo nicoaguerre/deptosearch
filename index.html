@@ -995,6 +995,25 @@ function saveConfig(){
 function gid(){return Date.now()+Math.random().toString(36).substr(2,5)}
 function today(){const d=new Date();return`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`}
 function p2(n){return String(n).padStart(2,'0')}
+function visitIsPast(v,now=new Date()){
+  if(!v?.date)return false;
+  const when=new Date(`${v.date}T${v.time||'23:59'}:00`);
+  return !Number.isNaN(when.getTime())&&when<=now;
+}
+function updateAutomaticVisitStatuses(){
+  const now=new Date();
+  let changed=false;
+  deptos.forEach(d=>{
+    if(d.status!=='visita')return;
+    const ownVisits=visits.filter(v=>v.deptoId===d.id);
+    if(ownVisits.length&&ownVisits.every(v=>visitIsPast(v,now))){
+      d.status='visitado';
+      addLog(d.id,'🔄 Estado cambió automáticamente a "Visitado"');
+      changed=true;
+    }
+  });
+  return changed;
+}
 function fmtDate(s){if(!s)return'';const[y,m,d]=s.split('-');const mn=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];return`${parseInt(d)} ${mn[m-1]}`}
 function ppm2(d){const m=d.m2t||d.m2c;return(m&&d.price)?Math.round(d.price/m):null}
 function esc(value){
@@ -1025,6 +1044,8 @@ function load(){
 }
 
 function save(){
+  localDataVersion++;
+  localChangesPending=true;
   try{localStorage.setItem('ds-deptos',JSON.stringify(deptos));localStorage.setItem('ds-visits',JSON.stringify(visits));}catch(e){}
   scheduleCloudSync();
 }
@@ -1032,6 +1053,10 @@ function save(){
 let syncTimer=null;
 let syncUser=null;
 let applyingCloudData=false;
+let localDataVersion=0;
+let localChangesPending=false;
+let syncInFlight=false;
+let syncRequested=false;
 let lastCloudUpdated=null;
 let lastSyncAt=null;
 let deferredInstallPrompt=null;
@@ -1087,6 +1112,7 @@ function applyCloudPayload(data){
     if(data.criterios)localStorage.setItem('ds-criterios',JSON.stringify(data.criterios));
     if(data.novedades)localStorage.setItem('ds-novedades',JSON.stringify(data.novedades));
     Object.entries(data.extra||{}).forEach(([key,value])=>localStorage.setItem(key,value));
+    localChangesPending=false;
     loadCriterios();renderScreen(curScreen());
   }finally{applyingCloudData=false}
 }
@@ -1097,14 +1123,18 @@ function scheduleCloudSync(){
   clearTimeout(syncTimer);syncTimer=setTimeout(()=>pushCloudData(false),1200);
 }
 async function pushCloudData(showMessage=true){
+  if(syncInFlight){syncRequested=true;return false}
   if(!syncUser)return;
   if(!navigator.onLine){setSyncVisual('error','Sin conexión · pendiente');syncStatus('Trabajás sin conexión. Los cambios se subirán cuando vuelva internet.');return false}
+  syncInFlight=true;
+  const versionBeingSaved=localDataVersion;
+  try{
   setSyncVisual('busy','Guardando...');
   if(showMessage)syncStatus('Guardando...');
   if(lastCloudUpdated){
     const{data:current,error:checkError}=await supabaseClient.from('user_backups').select('payload,updated_at').eq('user_id',syncUser.id).maybeSingle();
     if(checkError){syncStatus('No se pudo comprobar la copia online: '+checkError.message,'error');return false}
-    if(current?.updated_at&&current.updated_at!==lastCloudUpdated){
+    if(current?.updated_at&&current.updated_at!==lastCloudUpdated&&!localChangesPending){
       applyCloudPayload(current.payload);
       lastCloudUpdated=current.updated_at;
       lastSyncAt=new Date();
@@ -1120,6 +1150,7 @@ async function pushCloudData(showMessage=true){
   },{onConflict:'user_id'});
   if(error){syncStatus('No se pudo sincronizar: '+error.message,'error');return false}
   lastCloudUpdated=updatedAt;
+  if(localDataVersion===versionBeingSaved)localChangesPending=false;
   lastSyncAt=new Date();
   const{error:historyError}=await supabaseClient.from('user_backup_history').insert({user_id:syncUser.id,payload});
   if(historyError&&!historyError.message.includes('user_backup_history')){
@@ -1127,45 +1158,37 @@ async function pushCloudData(showMessage=true){
   }
   setSyncVisual('ok',syncTimeLabel());
   syncStatus(showMessage?'Todo está actualizado.':'','success');return true;
+  }finally{
+    syncInFlight=false;
+    if(syncRequested||localDataVersion!==versionBeingSaved){
+      syncRequested=false;
+      clearTimeout(syncTimer);syncTimer=setTimeout(()=>pushCloudData(false),0);
+    }
+  }
 }
 async function syncNow(){
   if(!syncUser)return;
+  const versionAtStart=localDataVersion;
   setSyncVisual('busy','Comprobando...');
   const{data,error}=await supabaseClient.from('user_backups').select('payload,updated_at').eq('user_id',syncUser.id).maybeSingle();
   if(error){syncStatus('No se pudo leer la copia online: '+error.message,'error');return}
-  const choiceKey='ds-sync-choice-'+syncUser.id;
-  const hasChosen=Boolean(localStorage.getItem(choiceKey));
   if(!data){
-    localStorage.setItem(choiceKey,'done');
     await pushCloudData();
     return;
   }
   lastCloudUpdated=data.updated_at;
-  const remoteCount=Array.isArray(data.payload?.deptos)?data.payload.deptos.length:0;
-  const localCount=deptos.length;
-  const firstSync=!hasChosen;
   const dataDiffers=JSON.stringify(data.payload)!==JSON.stringify(cloudPayload());
-  if(firstSync&&localCount&&remoteCount&&dataDiffers){
-    const useRemote=confirm(`Hay datos distintos en este dispositivo y en la nube.\n\nLocal: ${localCount} deptos\nOnline: ${remoteCount} deptos\n\nAceptar: usar la copia online.\nCancelar: conservar esta copia local y subirla.`);
-    localStorage.setItem(choiceKey,'done');
-    if(useRemote){
+  if(dataDiffers){
+    if(localDataVersion===versionAtStart){
       applyCloudPayload(data.payload);
       setSyncVisual('ok','Sincronizado');
       lastSyncAt=new Date();
-      syncStatus('Copia online descargada. Guardamos una instantánea local anterior por seguridad.','success');
+      syncStatus('Datos cargados desde la copia online.','success');
     }else{
-      await pushCloudData();
+      await pushCloudData(false);
     }
-    return;
-  }
-  if(remoteCount&&dataDiffers){
-    applyCloudPayload(data.payload);
-    localStorage.setItem(choiceKey,'done');
-    setSyncVisual('ok','Sincronizado');
-    lastSyncAt=new Date();
-    syncStatus(firstSync?'Datos descargados desde Supabase.':'Todo está actualizado.','success');
   }else{
-    localStorage.setItem(choiceKey,'done');
+    localChangesPending=false;
     setSyncVisual('ok','Sincronizado');
     lastSyncAt=new Date();
     syncStatus('Todo está actualizado.','success');
@@ -1650,6 +1673,9 @@ function saveDepto(){
   const m2d=parseFloat(document.getElementById('f-m2d').value)||0;
   const m2t=parseFloat(document.getElementById('f-m2t').value)||(m2c+m2d)||0;
   const newPrice=parseFloat(document.getElementById('f-price').value)||0;
+  const vd=document.getElementById('f-vdate').value;
+  const vt=document.getElementById('f-vtime').value;
+  const vn=document.getElementById('f-vnotes').value;
   const d={
     id:editingId||gid(),name,
     addr:document.getElementById('f-addr').value.trim(),
@@ -1675,6 +1701,7 @@ function saveDepto(){
     videos:parseVideosField(document.getElementById('f-videos').value),
     src:window._importedSrc||'manual'
   };
+  if(vd)d.status=visitIsPast({date:vd,time:vt})?'visitado':'visita';
   if(editingId){
     const i=deptos.findIndex(x=>x.id===editingId);
     if(i>=0){
@@ -1691,9 +1718,6 @@ function saveDepto(){
     deptos.push(d);
     addLog(d.id,'➕ Departamento agregado');
   }
-  const vd=document.getElementById('f-vdate').value;
-  const vt=document.getElementById('f-vtime').value;
-  const vn=document.getElementById('f-vnotes').value;
   if(vd){
     const ei=visits.findIndex(v=>v.deptoId===d.id&&v.date>=today());
     if(ei>=0){visits[ei]={...visits[ei],date:vd,time:vt,notes:vn};}
@@ -3281,13 +3305,17 @@ function checkHashNovedades() {
 
 // Init
 load();
+if(updateAutomaticVisitStatuses())save();
 applyTheme();
 renderResumen();
 checkHashImport();
 checkHashNovedades();
 initSupabase();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-setInterval(()=>{if(syncUser&&lastSyncAt)setSyncVisual(navigator.onLine?'ok':'error',syncTimeLabel())},30000);
+setInterval(()=>{
+  if(updateAutomaticVisitStatuses()){save();renderScreen(curScreen())}
+  if(syncUser&&lastSyncAt)setSyncVisual(navigator.onLine?'ok':'error',syncTimeLabel());
+},30000);
 
 function clearRangeFilters(){
   ['filter-price-min','filter-price-max','filter-m2-min'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
