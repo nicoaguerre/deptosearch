@@ -94,6 +94,7 @@ body{background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
 .chip i{font-size:13px}
 .badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:3px 8px;border-radius:5px;font-weight:500}
 .st-interesado{background:#1e1a3f;color:#a5a0ff}
+.st-contactado{background:#2a1020;color:#f472b6}
 .st-visita{background:var(--green-bg);color:var(--green-text)}
 .st-visitado{background:#0a1f2e;color:#38bdf8}
 .st-favorito{background:#1f1500;color:var(--yellow-text)}
@@ -518,6 +519,7 @@ body.light-mode .leaflet-popup-tip{background:#fff!important}
           <div class="map-filter-pills" id="map-filter-pills">
             <button class="mfp on" onclick="setMapFilter(this,'todos')">Todos</button>
             <button class="mfp" onclick="setMapFilter(this,'interesado')">Interesados</button>
+            <button class="mfp" onclick="setMapFilter(this,'contactado')">Contactados</button>
             <button class="mfp" onclick="setMapFilter(this,'visita')">Con visita</button>
             <button class="mfp" onclick="setMapFilter(this,'visitado')">Visitados</button>
             <button class="mfp" onclick="setMapFilter(this,'favorito')">Favoritos</button>
@@ -640,6 +642,7 @@ body.light-mode .leaflet-popup-tip{background:#fff!important}
       <div class="filter-row">
         <button class="fc on" onclick="setFilter(this,'todos')">Todos</button>
         <button class="fc" onclick="setFilter(this,'interesado')">Interesados</button>
+        <button class="fc" onclick="setFilter(this,'contactado')">Contactados</button>
         <button class="fc" onclick="setFilter(this,'visita')">Con visita</button>
         <button class="fc" onclick="setFilter(this,'visitado')">Visitados</button>
         <button class="fc" onclick="setFilter(this,'favorito')">Favoritos</button>
@@ -832,6 +835,7 @@ body.light-mode .leaflet-popup-tip{background:#fff!important}
       <div class="frow"><label>Estado</label>
         <select id="f-status">
           <option value="interesado">Interesado</option>
+          <option value="contactado">Contactado</option>
           <option value="visita">Visita programada</option>
           <option value="visitado">Visitado</option>
           <option value="favorito">Favorito</option>
@@ -982,8 +986,8 @@ let calDate=new Date();
 let lastFocusedElement=null;
 window._importedPhotos=[];window._importedSrc='manual';
 
-const SL={interesado:'Interesado',visita:'Visita programada',visitado:'Visitado',favorito:'Favorito',negociacion:'En negociación',descartado:'Descartado'};
-const SC={interesado:'st-interesado',visita:'st-visita',visitado:'st-visitado',favorito:'st-favorito',negociacion:'st-negociacion',descartado:'st-descartado'};
+const SL={interesado:'Interesado',contactado:'Contactado',visita:'Visita programada',visitado:'Visitado',favorito:'Favorito',negociacion:'En negociación',descartado:'Descartado'};
+const SC={interesado:'st-interesado',contactado:'st-contactado',visita:'st-visita',visitado:'st-visitado',favorito:'st-favorito',negociacion:'st-negociacion',descartado:'st-descartado'};
 const SCREENS=['resumen','deptos','mapa','visitas','comparar','novedades','criterios','ajustes'];
 
 function getKey(){return localStorage.getItem('ds-groq-key')||''}
@@ -2180,7 +2184,7 @@ function renderPriceChart(){
       label:'Precio vs m²',
       data:data.map(d=>({x:d.m2t||d.m2c,y:d.price,label:d.name})),
       backgroundColor:data.map(d=>{
-        const colors={interesado:'#534AB7',visita:'#1D9E75',visitado:'#38bdf8',favorito:'#EF9F27',negociacion:'#fbbf24',descartado:'#A32D2D'};
+        const colors={interesado:'#534AB7',contactado:'#DB2777',visita:'#1D9E75',visitado:'#38bdf8',favorito:'#EF9F27',negociacion:'#fbbf24',descartado:'#A32D2D'};
         return(colors[d.status]||'#534AB7')+'cc';
       }),
       pointRadius:7,pointHoverRadius:9
@@ -2456,7 +2460,7 @@ let poiClickMode=false, zoneClickMode=false;
 let selectedZoneColor='#534AB7';
 const GEO_CACHE_KEY='ds-geocache';
 const POI_KEY='ds-pois', ZONE_KEY='ds-zones';
-const MAP_COLORS={interesado:'#534AB7',visita:'#1D9E75',visitado:'#38bdf8',favorito:'#EF9F27',negociacion:'#fbbf24',descartado:'#A32D2D'};
+const MAP_COLORS={interesado:'#534AB7',contactado:'#DB2777',visita:'#1D9E75',visitado:'#38bdf8',favorito:'#EF9F27',negociacion:'#fbbf24',descartado:'#A32D2D'};
 const MAP_ICONS={};
 const POI_TYPE_LABELS={trabajo:'💼 Trabajo',casa:'🏠 Casa actual',gym:'🏋️ Gimnasio',familia:'👨‍👩‍👧 Familia',otro:'📍 Otro'};
 const POI_COLORS={trabajo:'#EF9F27',casa:'#1D9E75',gym:'#e05d5d',familia:'#38bdf8',otro:'#aaa'};
@@ -2625,9 +2629,9 @@ function addMarker(d,coords){
   const marker=L.marker([coords.lat,coords.lng],{icon:makeIcon(d.status)});
   const pp=ppm2(d);
   const photo=d.photos&&d.photos.length?safeUrl(d.photos[0]):null;
-  const statusColors={interesado:'background:#1e1a3f;color:#a5a0ff',visita:'background:#0d2018;color:#4ade9e',visitado:'background:#0a1f2e;color:#38bdf8',favorito:'background:#1f1500;color:#f59e0b',negociacion:'background:#1a1200;color:#fbbf24',descartado:'background:#2a0a0a;color:#f87171'};
+  const statusColors={interesado:'background:#1e1a3f;color:#a5a0ff',contactado:'background:#2a1020;color:#f472b6',visita:'background:#0d2018;color:#4ade9e',visitado:'background:#0a1f2e;color:#38bdf8',favorito:'background:#1f1500;color:#f59e0b',negociacion:'background:#1a1200;color:#fbbf24',descartado:'background:#2a0a0a;color:#f87171'};
   const sbg=statusColors[d.status]||statusColors.interesado;
-  const SL2={interesado:'Interesado',visita:'Con visita',visitado:'Visitado',favorito:'Favorito',negociacion:'Negociando',descartado:'Descartado'};
+  const SL2={interesado:'Interesado',contactado:'Contactado',visita:'Con visita',visitado:'Visitado',favorito:'Favorito',negociacion:'Negociando',descartado:'Descartado'};
   const mapsUrl=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.addr||d.name)}`;
 
   marker.bindPopup(`
