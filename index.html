@@ -1054,6 +1054,12 @@ function save(){
   scheduleCloudSync();
 }
 
+function markLocalChange(){
+  localDataVersion++;
+  localChangesPending=true;
+  scheduleCloudSync();
+}
+
 let syncTimer=null;
 let syncUser=null;
 let applyingCloudData=false;
@@ -3277,14 +3283,21 @@ function clearNovedades() {
   if (!confirm('¿Borrar todos los resultados de novedades?')) return;
   localStorage.removeItem('ds-novedades');
   novScreenItems = [];
+  markLocalChange();
   renderNovedades();
+}
+
+function storeNovedades(items) {
+  const payload = { items, timestamp: new Date().toISOString() };
+  localStorage.setItem('ds-novedades', JSON.stringify(payload));
+  markLocalChange();
+  return payload;
 }
 
 // Listen for novedades data sent by the extension via postMessage or hash
 window.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'deptoSearchNovedades') {
-    const payload = { items: e.data.items, timestamp: new Date().toISOString() };
-    localStorage.setItem('ds-novedades', JSON.stringify(payload));
+    storeNovedades(e.data.items);
     if (curScreen() === 'novedades') renderNovedades();
     showToast(`✅ ${e.data.items.length} novedades recibidas`, 'success');
   }
@@ -3298,8 +3311,7 @@ function checkHashNovedades() {
     const raw = hash.slice('#novedades='.length);
     const data = JSON.parse(raw);
     history.replaceState(null, '', location.pathname + location.search);
-    const payload = { items: data, timestamp: new Date().toISOString() };
-    localStorage.setItem('ds-novedades', JSON.stringify(payload));
+    storeNovedades(data);
     setTimeout(() => {
       nav('novedades');
       showToast(`✅ ${data.length} novedades recibidas`, 'success');
@@ -3314,6 +3326,10 @@ applyTheme();
 renderResumen();
 checkHashImport();
 checkHashNovedades();
+window.addEventListener('hashchange', () => {
+  checkHashImport();
+  checkHashNovedades();
+});
 initSupabase();
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 setInterval(()=>{
